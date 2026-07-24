@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Volleyball Hub & Match Engine</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header id="appHeader">
+    <h1>Volleyball Hub</h1>
+  </header>
+
+  <!-- BOTTOM / MOBILE NAVIGATION BAR -->
+  <nav class="nav-tabs">
+    <button class="nav-btn active" onclick="switchTab('dashboardTab', event)">
+      <span class="icon">📊</span>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('playersTab', event)">
+      <span class="icon">👥</span>
+      <span>Players</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('matchTab', event)">
+      <span class="icon">⚡</span>
+      <span>Matchmaker</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('historyTab', event)">
+      <span class="icon">🏆</span>
+      <span>History</span>
+    </button>
+    <button class="nav-btn" onclick="switchTab('settingsTab', event)">
+      <span class="icon">⚙️</span>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- 1. DASHBOARD PAGE -->
+  <div id="dashboardTab" class="page-content active">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="val" id="dashTotalPlayers">0</div>
+        <div class="lbl">Total Players</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="dashTotalMatches">0</div>
+        <div class="lbl">Matches Played</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="dashTopMVP">-</div>
+        <div class="lbl">Top MVP Leader</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>Top Performers (Highest OVR)</span></div>
+      <div id="topPlayersList"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>MVP Leaderboard</span></div>
+      <div id="mvpLeaderboardList"></div>
+    </div>
+  </div>
+
+  <!-- 2. PLAYERS MANAGEMENT PAGE -->
+  <div id="playersTab" class="page-content">
+    <div class="panel">
+      <div class="panel-title">
+        <span>Batch Add Players</span>
+      </div>
+      <textarea id="batchNames" rows="3" placeholder="Paste names (one per line):&#10;Alex Smith&#10;Jordan Lee"></textarea>
+      <button class="btn btn-primary" onclick="handleBatchAdd()">Add All Players</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">
+        <span>Roster Cards</span>
+        <button class="btn btn-primary modal-btn" onclick="openPlayerModal()">+ Add Player</button>
+      </div>
+      <div class="cards-grid" id="rosterGrid"></div>
+    </div>
+  </div>
+
+  <!-- 3. MATCHMAKING PAGE -->
+  <div id="matchTab" class="page-content">
+    <div class="panel">
+      <div class="panel-title">
+        <span>Select Players for Match</span>
+        <span id="selectedCount" class="sub-text">0 Selected</span>
+      </div>
+
+      <div class="button-group-sm">
+        <button class="btn btn-sec btn-sm" onclick="selectAllPlayers(true)">Select All</button>
+        <button class="btn btn-sec btn-sm" onclick="selectAllPlayers(false)">Deselect All</button>
+      </div>
+
+      <div class="button-group-grid">
+        <button class="btn btn-green" onclick="generateMatch(true)">⚡ Skill Balanced</button>
+        <button class="btn btn-blue" onclick="generateMatch(false)">🎲 Pure Random</button>
+      </div>
+    </div>
+
+    <div class="panel" id="generatedMatchPanel" style="display:none;">
+      <div class="panel-title">
+        <span>Generated Matchup</span>
+        <span id="diffIndicator" class="sub-text"></span>
+      </div>
+
+      <div class="teams-grid">
+        <div class="team-box" id="teamABox"></div>
+        <div class="team-box" id="teamBBox"></div>
+      </div>
+
+      <div class="match-logging-section">
+        <div class="panel-title text-sm"><span>Log Match Result</span></div>
+        <div class="score-inputs">
+          <input type="number" id="scoreA" placeholder="Team A Score" value="25">
+          <input type="number" id="scoreB" placeholder="Team B Score" value="23">
+        </div>
+        <select id="mvpSelect" class="mb-sm">
+          <option value="">Select Match MVP (Optional)</option>
+        </select>
+        <button class="btn btn-primary" onclick="saveMatchResult()">Save Match Record</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. MATCH HISTORY PAGE -->
+  <div id="historyTab" class="page-content">
+    <div class="panel">
+      <div class="panel-title"><span>Past Match Records</span></div>
+      <div id="historyContainer"></div>
+    </div>
+  </div>
+
+  <!-- 5. SETTINGS, CUSTOM CARD DESIGN & DATA BACKUP PAGE -->
+  <div id="settingsTab" class="page-content">
+    <div class="panel">
+      <div class="panel-title"><span>Global Custom Card Design Frame</span></div>
+      <p class="sub-text mb-sm">Upload a blank card image from Pinterest. It will be used as the base background for all player cards.</p>
+      <div class="theme-options">
+        <label class="theme-picker">
+          <span>Upload Card Template Image</span>
+          <input type="file" id="cardDesignInput" accept="image/*" onchange="handleGlobalCardDesignUpload(event)">
+        </label>
+        <button class="btn btn-sec mt-sm" onclick="clearGlobalCardDesign()">Reset to Default Theme</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>App Background Customization</span></div>
+      <div class="theme-options">
+        <label class="theme-picker">
+          <span>Upload Custom App Background Photo</span>
+          <input type="file" id="bgFileInput" accept="image/*" onchange="handleBgFileUpload(event)">
+        </label>
+
+        <label class="theme-picker mt-sm">
+          <span>Background Presets</span>
+          <select id="bgPresetSelect" onchange="applyBgPreset(this.value)">
+            <option value="midnight">Midnight Dark (Default)</option>
+            <option value="stadium">Stadium Floodlight Blue</option>
+            <option value="court">Volleyball Sunset Court</option>
+            <option value="charcoal">Charcoal Minimal</option>
+            <option value="neon">Cyber Neon Glow</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>App Accent Color</span></div>
+      <div class="theme-options">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="color" id="appAccentColor" value="#fbbf24" onchange="updateAppAccent(this.value)" style="width:50px; height:40px; padding:0;">
+          <span class="sub-text">Pick your highlight color for buttons & titles</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span>Data Backup & Restore</span></div>
+      <p class="sub-text mb-sm">Save your data to a file or load it onto another mobile device/browser.</p>
+      <div class="button-group-grid">
+        <button class="btn btn-primary" onclick="exportDataBackup()">📥 Export Backup JSON</button>
+        <label class="btn btn-sec" style="margin:0; text-align:center;">
+          📤 Import Backup JSON
+          <input type="file" id="importJsonInput" accept=".json" onchange="importDataBackup(event)" style="display:none;">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYER EDIT MODAL -->
+  <div class="modal" id="playerModal">
+    <div class="modal-body">
+      <div class="panel-title">
+        <span id="modalTitle">Edit Player</span>
+        <button onclick="closePlayerModal()" class="close-btn">&times;</button>
+      </div>
+
+      <form id="playerForm" onsubmit="handleSavePlayer(event)">
+        <input type="hidden" id="editId">
+        
+        <label class="input-lbl">Name</label>
+        <input type="text" id="editName" required>
+
+        <div class="form-row">
+          <div>
+            <label class="input-lbl">Position</label>
+            <select id="editPos">
+              <option value="Attacker">Attacker</option>
+              <option value="Setter">Setter</option>
+              <option value="Blocker">Blocker</option>
+              <option value="Libero">Libero</option>
+              <option value="Universal">Universal</option>
+            </select>
+          </div>
+          <div>
+            <label class="input-lbl">Jersey #</label>
+            <input type="number" id="editJersey" min="0" max="99">
+          </div>
+        </div>
+
+        <div class="mt-sm">
+          <label class="input-lbl">Upload Player Photo (Transparent PNG best)</label>
+          <input type="file" id="editPhoto" accept="image/*">
+        </div>
+
+        <div class="mt-sm">
+          <label class="input-lbl">Upload Individual Card Design Template (Optional)</label>
+          <input type="file" id="editCustomCardFrame" accept="image/*">
+        </div>
+
+        <!-- INDIVIDUAL CARD THEME SELECTOR -->
+        <div class="stats-section">
+          <span class="stats-header">Card Style Preset</span>
+          <div class="form-row mt-sm">
+            <div>
+              <label class="input-lbl">Color Preset (Used if no custom image)</label>
+              <select id="editCardTheme" onchange="toggleCustomColorInputs(this.value)">
+                <option value="gold">Gold Legend</option>
+                <option value="emerald">Emerald Icon</option>
+                <option value="crimson">Crimson Fire</option>
+                <option value="obsidian">Obsidian Dark</option>
+                <option value="cyan">Cyan Electric</option>
+                <option value="custom">Custom Color Picker</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row mt-sm" id="customCardColorsRow" style="display:none;">
+            <div>
+              <label class="input-lbl">Card Main Color</label>
+              <input type="color" id="editCardColor" value="#f59e0b" style="height:38px; padding:0;">
+            </div>
+            <div>
+              <label class="input-lbl">Border Color</label>
+              <input type="color" id="editCardBorder" value="#fef08a" style="height:38px; padding:0;">
+            </div>
+          </div>
+        </div>
+
+        <!-- STAT SLIDERS -->
+        <div class="stats-section">
+          <span class="stats-header">Stats (1-99)</span>
+          
+          <div class="slider-group">
+            <label><span>Attack</span><span id="lblAtk">70</span></label>
+            <input type="range" id="statAtk" min="1" max="99" value="70" oninput="updateSliderLbl('Atk')">
+          </div>
+          <div class="slider-group">
+            <label><span>Serve</span><span id="lblSrv">70</span></label>
+            <input type="range" id="statSrv" min="1" max="99" value="70" oninput="updateSliderLbl('Srv')">
+          </div>
+          <div class="slider-group">
+            <label><span>Receive</span><span id="lblRcv">70</span></label>
+            <input type="range" id="statRcv" min="1" max="99" value="70" oninput="updateSliderLbl('Rcv')">
+          </div>
+          <div class="slider-group">
+            <label><span>Block</span><span id="lblBlk">70</span></label>
+            <input type="range" id="statBlk" min="1" max="99" value="70" oninput="updateSliderLbl('Blk')">
+          </div>
+          <div class="slider-group">
+            <label><span>Stamina</span><span id="lblStm">70</span></label>
+            <input type="range" id="statStm" min="1" max="99" value="70" oninput="updateSliderLbl('Stm')">
+          </div>
+          <div class="slider-group">
+            <label><span>Teamwork</span><span id="lblTmw">70</span></label>
+            <input type="range" id="statTmw" min="1" max="99" value="70" oninput="updateSliderLbl('Tmw')">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-sec btn-delete" id="btnDeletePlayer" onclick="handleDeletePlayer()">Delete</button>
+          <button type="submit" class="btn btn-primary">Save Card</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
