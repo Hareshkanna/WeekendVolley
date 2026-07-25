@@ -29,9 +29,13 @@ let tempPhotoBase64 = null;
 let tempPlayerCardFrameBase64 = null;
 
 function saveAll() {
-  localStorage.setItem('vb_hub_players', JSON.stringify(players));
-  localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
-  localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
+  db.collection("appData").doc("roster").set({
+    players: players,
+    matchHistory: matchHistory,
+    appSettings: appSettings
+  })
+  .then(() => console.log("Synced to Cloud!"))
+  .catch((err) => console.error("Cloud Save Error: ", err));
 }
 
 function calcOVR(stats) {
@@ -501,6 +505,24 @@ function handleDeletePlayer() {
     closePlayerModal();
   }
 }
+
+function syncCloudData() {
+  db.collection("appData").doc("roster").onSnapshot((doc) => {
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.players) players = data.players;
+      if (data.matchHistory) matchHistory = data.matchHistory;
+      if (data.appSettings) appSettings = data.appSettings;
+      
+      applySettings();
+      renderRoster();
+      renderDashboard();
+    }
+  });
+}
+
+// Start live sync
+syncCloudData();
 
 // INITIAL LOAD
 applySettings();
