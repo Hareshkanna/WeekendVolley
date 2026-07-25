@@ -26,12 +26,19 @@ auth.onAuthStateChanged((user) => {
 });
 
 function openLoginModal() {
-  document.getElementById("loginModal").style.display = "flex";
+const modal = document.getElementById("loginModal");
+  if (modal) {
+    modal.style.display = "flex"; // Changes from 'none' to 'flex'
+  } else {
+    console.error("Could not find element with id 'loginModal'");
+  }
 }
 
 function closeLoginModal() {
-  document.getElementById("loginModal").style.display = "none";
-  document.getElementById("loginError").innerText = "";
+const modal = document.getElementById("loginModal");
+  if (modal) {
+    modal.style.display = "none";
+  }
 }
 
 function handleLogin(e) {
@@ -561,7 +568,7 @@ function handleDeletePlayer() {
     alert("Permission denied. Only Admins can delete players.");
     return;
   }
-  
+
   const id = document.getElementById('editId').value;
   if (id && confirm('Delete this player?')) {
     players = players.filter(p => p.id !== id);
