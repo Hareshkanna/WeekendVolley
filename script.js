@@ -1,3 +1,59 @@
+// --- AUTHENTICATION & ROLE MANAGEMENT ---
+let currentUser = null;
+let isAdmin = false;
+
+// Monitor login status automatically
+auth.onAuthStateChanged((user) => {
+  currentUser = user;
+  const badge = document.getElementById("userRoleBadge");
+  const loginBtn = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  if (user) {
+    isAdmin = true;
+    if (badge) badge.innerText = "Role: Admin 👑";
+    if (loginBtn) loginBtn.style.display = "none";
+    if (logoutBtn) logoutBtn.style.display = "inline-block";
+  } else {
+    isAdmin = false;
+    if (badge) badge.innerText = "Role: Player/Viewer";
+    if (loginBtn) loginBtn.style.display = "inline-block";
+    if (logoutBtn) logoutBtn.style.display = "none";
+  }
+  
+  // Refresh UI based on user permissions
+  if (typeof renderRoster === "function") renderRoster();
+});
+
+function openLoginModal() {
+  document.getElementById("loginModal").style.display = "flex";
+}
+
+function closeLoginModal() {
+  document.getElementById("loginModal").style.display = "none";
+  document.getElementById("loginError").innerText = "";
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById("loginEmail").value;
+  const pass = document.getElementById("loginPassword").value;
+
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      closeLoginModal();
+    })
+    .catch((error) => {
+      document.getElementById("loginError").innerText = error.message;
+    });
+}
+
+function handleLogout() {
+  auth.signOut();
+}
+
+
+
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 
 // PREDEFINED FUT METALLIC GRADIENTS
@@ -449,6 +505,10 @@ document.getElementById('editCustomCardFrame').addEventListener('change', (e) =>
 
 function handleSavePlayer(e) {
   e.preventDefault();
+  if (!isAdmin) {
+    alert("Permission denied. Only Admins can edit or add players.");
+    return;
+  }
   const id = document.getElementById('editId').value;
   const stats = {
     atk: Number(document.getElementById('statAtk').value),
@@ -496,6 +556,12 @@ function handleSavePlayer(e) {
 }
 
 function handleDeletePlayer() {
+
+  if (!isAdmin) {
+    alert("Permission denied. Only Admins can delete players.");
+    return;
+  }
+  
   const id = document.getElementById('editId').value;
   if (id && confirm('Delete this player?')) {
     players = players.filter(p => p.id !== id);
