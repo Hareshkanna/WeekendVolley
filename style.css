@@ -200,11 +200,10 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 
 /* Card Shield Base */
 .fifa-card-shield {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
+  position: relative; /* Ensures absolute children align inside the shield */
   display: flex;
   flex-direction: column;
+  justify-content: space-between; /* Keeps top header, middle render, and bottom stats/button spaced */
 }
 
 /* Apply CSS Polygon clip ONLY when using internal CSS presets */
@@ -368,13 +367,13 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 
 /* Edit Card Action */
 .fut-card-actions {
-  position: absolute;
-  bottom: 0.8rem;
-  left: 14%;
-  right: 14%;
-  z-index: 8;
+  position: relative;
+  z-index: 15;
+  width: 100%;
+  margin-top: auto; /* Pushes the button to the very bottom of the card content */
+  padding-top: 6px;
+  text-align: center;
 }
-
 /* MATCHMAKING & HISTORY */
 .teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
 .team-box { background: var(--bg-card); padding: 0.75rem; border-radius: 0.5rem; }
@@ -491,13 +490,18 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 
 .fut-card-actions {
   position: relative;
-  z-index: 10;
-  margin-top: 8px;
+  z-index: 15;
+  width: 100%;
+  margin-top: auto; /* Pushes the button to the very bottom of the card content */
+  padding-top: 6px;
+  text-align: center;
 }
 
 .fut-card-actions button {
-  cursor: pointer;
+  width: 90%;
+  margin: 0 auto;
   pointer-events: auto;
+  cursor: pointer;
 }
 
 
