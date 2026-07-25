@@ -466,49 +466,59 @@ function toggleCustomColorInputs(themeVal) {
   row.style.display = (themeVal === 'custom') ? 'grid' : 'none';
 }
 
-function openPlayerModal(id = null) {
-  tempPhotoBase64 = null;
-  tempPlayerCardFrameBase64 = null;
+window.openPlayerModal = function(id = null) {
+  if (!isAdmin) {
+    alert("Permission denied. Only Admins can edit players.");
+    return;
+  }
+
+  const modal = document.getElementById("playerModal");
+  if (!modal) return;
 
   if (id) {
-    const p = players.find(x => x.id === id);
-    document.getElementById('modalTitle').innerText = 'Edit Player';
-    document.getElementById('editId').value = p.id;
-    document.getElementById('editName').value = p.name;
-    document.getElementById('editPos').value = p.pos;
-    document.getElementById('editJersey').value = p.jersey;
-    document.getElementById('editCardTheme').value = p.cardTheme || 'gold';
-    
-    if (p.cardCustomColor) document.getElementById('editCardColor').value = p.cardCustomColor;
-    if (p.cardCustomBorder) document.getElementById('editCardBorder').value = p.cardCustomBorder;
-    toggleCustomColorInputs(p.cardTheme || 'gold');
+    const p = players.find(player => player.id === id);
+    if (p) {
+      if (document.getElementById("editId")) document.getElementById("editId").value = p.id;
+      if (document.getElementById("editName")) document.getElementById("editName").value = p.name || "";
+      if (document.getElementById("editPos")) document.getElementById("editPos").value = p.pos || "Universal";
+      if (document.getElementById("editJersey")) document.getElementById("editJersey").value = p.jersey || "";
+      
+      // Load Stats into Sliders
+      if (p.stats) {
+        if (document.getElementById("statAtk")) document.getElementById("statAtk").value = p.stats.atk || 70;
+        if (document.getElementById("statSrv")) document.getElementById("statSrv").value = p.stats.srv || 70;
+        if (document.getElementById("statRcv")) document.getElementById("statRcv").value = p.stats.rcv || 70;
+        if (document.getElementById("statBlk")) document.getElementById("statBlk").value = p.stats.blk || 70;
+        if (document.getElementById("statStm")) document.getElementById("statStm").value = p.stats.stm || 70;
+        if (document.getElementById("statTmw")) document.getElementById("statTmw").value = p.stats.tmw || 70;
 
-    ['Atk','Srv','Rcv','Blk','Stm','Tmw'].forEach(k => {
-      const val = p.stats[k.toLowerCase()];
-      document.getElementById(`stat${k}`).value = val;
-      document.getElementById(`lbl${k}`).innerText = val;
-    });
-    document.getElementById('btnDeletePlayer').style.display = 'block';
+        // Update Slider Labels
+        ['Atk', 'Srv', 'Rcv', 'Blk', 'Stm', 'Tmw'].forEach(s => {
+          const lbl = document.getElementById(`lbl${s}`);
+          const input = document.getElementById(`stat${s}`);
+          if (lbl && input) lbl.innerText = input.value;
+        });
+      }
+
+      const modalTitle = document.getElementById("modalTitle");
+      if (modalTitle) modalTitle.innerText = "Edit Player Card";
+    }
   } else {
-    document.getElementById('modalTitle').innerText = 'New Player';
-    document.getElementById('editId').value = '';
-    document.getElementById('editName').value = '';
-    document.getElementById('editJersey').value = 10;
-    document.getElementById('editCardTheme').value = 'gold';
-    toggleCustomColorInputs('gold');
-
-    ['Atk','Srv','Rcv','Blk','Stm','Tmw'].forEach(k => {
-      document.getElementById(`stat${k}`).value = 70;
-      document.getElementById(`lbl${k}`).innerText = 70;
-    });
-    document.getElementById('btnDeletePlayer').style.display = 'none';
+    // Adding New Player
+    const form = document.getElementById("playerForm");
+    if (form) form.reset();
+    if (document.getElementById("editId")) document.getElementById("editId").value = "";
+    const modalTitle = document.getElementById("modalTitle");
+    if (modalTitle) modalTitle.innerText = "Add New Player";
   }
-  document.getElementById('playerModal').classList.add('active');
-}
 
-function closePlayerModal() {
-  document.getElementById('playerModal').classList.remove('active');
-}
+  modal.style.display = "flex";
+};
+
+window.closePlayerModal = function() {
+  const modal = document.getElementById("playerModal");
+  if (modal) modal.style.display = "none";
+};
 
 function updateSliderLbl(k) {
   document.getElementById(`lbl${k}`).innerText = document.getElementById(`stat${k}`).value;
@@ -532,57 +542,59 @@ document.getElementById('editCustomCardFrame').addEventListener('change', (e) =>
   }
 });
 
-function handleSavePlayer(e) {
+window.handleSavePlayer = function(e) {
   e.preventDefault();
+  
   if (!isAdmin) {
-    alert("Permission denied. Only Admins can edit or add players.");
+    alert("Permission denied. Only Admins can edit or save player profiles.");
     return;
   }
-  const id = document.getElementById('editId').value;
+
+  const editId = document.getElementById("editId").value;
+  const name = document.getElementById("editName").value;
+  const pos = document.getElementById("editPos") ? document.getElementById("editPos").value : "Universal";
+  const jersey = document.getElementById("editJersey") ? document.getElementById("editJersey").value : "0";
+
   const stats = {
-    atk: Number(document.getElementById('statAtk').value),
-    srv: Number(document.getElementById('statSrv').value),
-    rcv: Number(document.getElementById('statRcv').value),
-    blk: Number(document.getElementById('statBlk').value),
-    stm: Number(document.getElementById('statStm').value),
-    tmw: Number(document.getElementById('statTmw').value)
+    atk: parseInt(document.getElementById("statAtk")?.value || 70),
+    srv: parseInt(document.getElementById("statSrv")?.value || 70),
+    rcv: parseInt(document.getElementById("statRcv")?.value || 70),
+    blk: parseInt(document.getElementById("statBlk")?.value || 70),
+    stm: parseInt(document.getElementById("statStm")?.value || 70),
+    tmw: parseInt(document.getElementById("statTmw")?.value || 70)
   };
 
-  const cardTheme = document.getElementById('editCardTheme').value;
-  const cardCustomColor = document.getElementById('editCardColor').value;
-  const cardCustomBorder = document.getElementById('editCardBorder').value;
+  // Calculate Overall (OVR) rating
+  const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
-  if (id) {
-    const p = players.find(x => x.id === id);
-    p.name = document.getElementById('editName').value;
-    p.pos = document.getElementById('editPos').value;
-    p.jersey = Number(document.getElementById('editJersey').value);
-    p.stats = stats;
-    p.ovr = calcOVR(stats);
-    p.cardTheme = cardTheme;
-    p.cardCustomColor = cardCustomColor;
-    p.cardCustomBorder = cardCustomBorder;
-    if (tempPhotoBase64) p.photo = tempPhotoBase64;
-    if (tempPlayerCardFrameBase64) p.customCardFrame = tempPlayerCardFrameBase64;
+  if (editId) {
+    // Update existing player profile
+    const index = players.findIndex(p => p.id === editId);
+    if (index !== -1) {
+      players[index].name = name;
+      players[index].pos = pos;
+      players[index].jersey = jersey;
+      players[index].stats = stats;
+      players[index].ovr = ovr;
+    }
   } else {
-    const newP = {
-      id: Date.now().toString(),
-      name: document.getElementById('editName').value,
-      pos: document.getElementById('editPos').value,
-      jersey: Number(document.getElementById('editJersey').value),
-      photo: tempPhotoBase64 || DEFAULT_AVATAR,
-      customCardFrame: tempPlayerCardFrameBase64 || '',
-      stats, ovr: calcOVR(stats), mvps: 0,
-      cardTheme, cardCustomColor, cardCustomBorder
+    // Add new player profile
+    const newPlayer = {
+      id: "p_" + Date.now(),
+      name: name,
+      pos: pos,
+      jersey: jersey,
+      stats: stats,
+      ovr: ovr,
+      photo: ""
     };
-    players.push(newP);
-    selectedPlayerIds.add(newP.id);
+    players.push(newPlayer);
   }
 
-  saveAll();
-  renderRoster();
+  saveAll(); // Save to Firebase Firestore
   closePlayerModal();
-}
+  renderRoster();
+};
 
 function handleDeletePlayer() {
 
