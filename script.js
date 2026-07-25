@@ -22,7 +22,9 @@ auth.onAuthStateChanged((user) => {
   }
   
   // Refresh UI based on user permissions
-  if (typeof renderRoster === "function") renderRoster();
+if (typeof renderRoster === "function") {
+    renderRoster();
+  }
 });
 
 // Add/replace this in script.js
@@ -263,6 +265,20 @@ function getPlayerCardStyle(player) {
 
 function renderRoster() {
   const grid = document.getElementById('rosterGrid');
+  if (!grid) return;
+
+  // Toggle "+ Add Player" button visibility based on Admin status
+  const addBtn = document.querySelector(".modal-btn");
+  if (addBtn) {
+    addBtn.style.display = isAdmin ? "inline-block" : "none";
+  }
+
+  // Hide "Batch Add" panel if not Admin
+  const batchPanel = document.getElementById("batchNames")?.closest(".panel");
+  if (batchPanel) {
+    batchPanel.style.display = isAdmin ? "block" : "none";
+  }
+
   grid.innerHTML = players.map(p => {
     const isSel = selectedPlayerIds.has(p.id);
     const style = getPlayerCardStyle(p);
@@ -278,14 +294,14 @@ function renderRoster() {
           <!-- Rating & Position Stack -->
           <div class="fut-badge-stack">
             <div class="fut-ovr">${p.ovr}</div>
-            <div class="fut-pos">${p.pos.substring(0,3)}</div>
+            <div class="fut-pos">${p.pos ? p.pos.substring(0,3) : 'UNI'}</div>
             <div class="fut-line-separator"></div>
-            <div class="fut-jersey">#${p.jersey}</div>
+            <div class="fut-jersey">#${p.jersey || '0'}</div>
           </div>
 
           <!-- Cutout Render Canvas -->
           <div class="fut-player-render">
-            <img src="${p.photo}" alt="${p.name}">
+            <img src="${p.photo || ''}" alt="${p.name}">
           </div>
 
           <!-- Player Name Banner -->
@@ -293,25 +309,30 @@ function renderRoster() {
 
           <!-- FUT Stats Columns -->
           <div class="fut-stats-grid">
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats.atk}</span><span class="fut-stat-lbl">ATK</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats.blk}</span><span class="fut-stat-lbl">BLK</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats.srv}</span><span class="fut-stat-lbl">SRV</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats.stm}</span><span class="fut-stat-lbl">STM</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats.rcv}</span><span class="fut-stat-lbl">RCV</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats.tmw}</span><span class="fut-stat-lbl">TMW</span></div>
+            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.atk || 70}</span><span class="fut-stat-lbl">ATK</span></div>
+            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.blk || 70}</span><span class="fut-stat-lbl">BLK</span></div>
+            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.srv || 70}</span><span class="fut-stat-lbl">SRV</span></div>
+            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.stm || 70}</span><span class="fut-stat-lbl">STM</span></div>
+            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.rcv || 70}</span><span class="fut-stat-lbl">RCV</span></div>
+            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.tmw || 70}</span><span class="fut-stat-lbl">TMW</span></div>
           </div>
 
-          <!-- Edit Action Button -->
-          <div class="fut-card-actions">
-            <button onclick="event.stopPropagation(); openPlayerModal('${p.id}')" class="btn btn-sec btn-sm">Edit Card</button>
-          </div>
+          <!-- Edit Action Button (ONLY VISIBLE IF ADMIN) -->
+          ${isAdmin ? `
+            <div class="fut-card-actions">
+              <button onclick="event.stopPropagation(); openPlayerModal('${p.id}')" class="btn btn-sec btn-sm">Edit Card</button>
+            </div>
+          ` : ''}
 
         </div>
       </div>
     `;
   }).join('');
 
-  document.getElementById('selectedCount').innerText = `${selectedPlayerIds.size} Selected`;
+  const selectedCountEl = document.getElementById('selectedCount');
+  if (selectedCountEl) {
+    selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
+  }
 }
 
 function toggleSelect(id) {
