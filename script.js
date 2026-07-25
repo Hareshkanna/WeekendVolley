@@ -596,22 +596,22 @@ window.handleSavePlayer = function(e) {
   renderRoster();
 };
 
-function handleDeletePlayer() {
-
+window.handleDeletePlayer = function() {
   if (!isAdmin) {
     alert("Permission denied. Only Admins can delete players.");
     return;
   }
 
-  const id = document.getElementById('editId').value;
-  if (id && confirm('Delete this player?')) {
-    players = players.filter(p => p.id !== id);
-    selectedPlayerIds.delete(id);
+  const editId = document.getElementById("editId").value;
+  if (!editId) return;
+
+  if (confirm("Are you sure you want to delete this player?")) {
+    players = players.filter(p => p.id !== editId);
     saveAll();
-    renderRoster();
     closePlayerModal();
+    renderRoster();
   }
-}
+};
 
 function syncCloudData() {
   db.collection("appData").doc("roster").onSnapshot((doc) => {

@@ -454,3 +454,14 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .text-gold { color: var(--accent-color); }
 .text-blue { color: #3b82f6; }
 .list-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; }
+
+.fut-card-actions {
+  position: relative;
+  z-index: 10;
+  margin-top: 8px;
+}
+
+.fut-card-actions button {
+  cursor: pointer;
+  pointer-events: auto;
+}
