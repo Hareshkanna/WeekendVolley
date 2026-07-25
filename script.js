@@ -25,21 +25,22 @@ auth.onAuthStateChanged((user) => {
   if (typeof renderRoster === "function") renderRoster();
 });
 
-function openLoginModal() {
-const modal = document.getElementById("loginModal");
+// Add/replace this in script.js
+window.openLoginModal = function() {
+  const modal = document.getElementById("loginModal");
   if (modal) {
-    modal.style.display = "flex"; // Changes from 'none' to 'flex'
+    modal.style.display = "flex";
   } else {
-    console.error("Could not find element with id 'loginModal'");
+    alert("Modal element #loginModal not found in HTML!");
   }
-}
+};
 
-function closeLoginModal() {
-const modal = document.getElementById("loginModal");
+window.closeLoginModal = function() {
+  const modal = document.getElementById("loginModal");
   if (modal) {
     modal.style.display = "none";
   }
-}
+};
 
 function handleLogin(e) {
   e.preventDefault();
