@@ -475,6 +475,9 @@ window.openPlayerModal = function(id = null) {
   const modal = document.getElementById("playerModal");
   if (!modal) return;
 
+  // Prevent background page from moving while scrolling modal
+  document.body.classList.add("modal-open");
+
   if (id) {
     const p = players.find(player => player.id === id);
     if (p) {
@@ -483,7 +486,6 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editPos")) document.getElementById("editPos").value = p.pos || "Universal";
       if (document.getElementById("editJersey")) document.getElementById("editJersey").value = p.jersey || "";
       
-      // Load Stats into Sliders
       if (p.stats) {
         if (document.getElementById("statAtk")) document.getElementById("statAtk").value = p.stats.atk || 70;
         if (document.getElementById("statSrv")) document.getElementById("statSrv").value = p.stats.srv || 70;
@@ -492,7 +494,6 @@ window.openPlayerModal = function(id = null) {
         if (document.getElementById("statStm")) document.getElementById("statStm").value = p.stats.stm || 70;
         if (document.getElementById("statTmw")) document.getElementById("statTmw").value = p.stats.tmw || 70;
 
-        // Update Slider Labels
         ['Atk', 'Srv', 'Rcv', 'Blk', 'Stm', 'Tmw'].forEach(s => {
           const lbl = document.getElementById(`lbl${s}`);
           const input = document.getElementById(`stat${s}`);
@@ -504,7 +505,6 @@ window.openPlayerModal = function(id = null) {
       if (modalTitle) modalTitle.innerText = "Edit Player Card";
     }
   } else {
-    // Adding New Player
     const form = document.getElementById("playerForm");
     if (form) form.reset();
     if (document.getElementById("editId")) document.getElementById("editId").value = "";
@@ -512,12 +512,14 @@ window.openPlayerModal = function(id = null) {
     if (modalTitle) modalTitle.innerText = "Add New Player";
   }
 
-  modal.style.display = "flex";
+  modal.style.display = "block"; // Note: changed to block for native scroll container
+  modal.scrollTop = 0; // Reset scroll position to top
 };
 
 window.closePlayerModal = function() {
   const modal = document.getElementById("playerModal");
   if (modal) modal.style.display = "none";
+  document.body.classList.remove("modal-open");
 };
 
 function updateSliderLbl(k) {

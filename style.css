@@ -499,3 +499,49 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   cursor: pointer;
   pointer-events: auto;
 }
+
+
+/* OVERRIDE: FORCE MODAL SCROLLING */
+body.modal-open {
+  overflow: hidden !important; /* Locks background page while scrolling modal */
+}
+
+div#playerModal.modal,
+div#loginModal.modal {
+  display: none;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  z-index: 99999 !important;
+  
+  /* CRUCIAL: Allow outer overlay container to scroll */
+  overflow-y: scroll !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 20px 10px !important;
+  box-sizing: border-box !important;
+}
+
+div#playerModal .modal-body,
+div#loginModal .modal-body {
+  position: relative !important;
+  margin: 30px auto !important; /* Gives room top & bottom so you can scroll past top/bottom */
+  background: #1e293b !important;
+  color: #ffffff !important;
+  padding: 1.5rem !important;
+  border-radius: 12px !important;
+  width: 100% !important;
+  max-width: 480px !important;
+  height: auto !important;
+  max-height: none !important; /* Removes inner clipping constraint */
+  overflow: visible !important;
+  
+  /* Enable all touch gestures */
+  touch-action: auto !important;
+  pointer-events: auto !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+}
