@@ -231,14 +231,18 @@
           </div>
         </div>
 
+        <!-- UPDATED IMAGE & CARD UPLOAD SECTION -->
         <div class="mt-sm">
-          <label class="input-lbl">Upload Player Photo (Transparent PNG best)</label>
+          <label class="input-lbl">Upload Player Photo Cutout</label>
           <input type="file" id="editPhoto" accept="image/*">
         </div>
 
-        <div class="mt-sm">
-          <label class="input-lbl">Upload Individual Card Design Template (Optional)</label>
-          <input type="file" id="editCustomCardFrame" accept="image/*">
+        <div class="mt-sm" style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
+          <label class="input-lbl" style="font-weight: bold; color: #fbbf24;">Upload Custom FIFA Card Graphic (PNG/JPG)</label>
+          <input type="file" id="editCustomCardFrame" accept="image/*" style="margin-bottom: 6px;">
+          
+          <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct card Image URL / Base64 string:</span>
+          <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.png" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff;">
         </div>
 
         <!-- INDIVIDUAL CARD THEME SELECTOR -->
@@ -339,18 +343,18 @@
 
   <script>
     const firebaseConfig = {
-  apiKey: "AIzaSyCn-8Osm0L_DHlOxFDITpjIbR61cv8kfyE",
-  authDomain: "weekendvolley-4aa82.firebaseapp.com",
-  projectId: "weekendvolley-4aa82",
-  storageBucket: "weekendvolley-4aa82.firebasestorage.app",
-  messagingSenderId: "975661684075",
-  appId: "1:975661684075:web:a52764249edb800af3a82e",
-  measurementId: "G-0F671ZBD84"
-};
+      apiKey: "AIzaSyCn-8Osm0L_DHlOxFDITpjIbR61cv8kfyE",
+      authDomain: "weekendvolley-4aa82.firebaseapp.com",
+      projectId: "weekendvolley-4aa82",
+      storageBucket: "weekendvolley-4aa82.firebasestorage.app",
+      messagingSenderId: "975661684075",
+      appId: "1:975661684075:web:a52764249edb800af3a82e",
+      measurementId: "G-0F671ZBD84"
+    };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const auth = firebase.auth(); // <-- CRUCIAL: Must be declared here
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
   </script>
 
   <script src="script.js"></script>

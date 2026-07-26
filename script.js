@@ -514,16 +514,28 @@ window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
   
   if (!isAdmin) {
-    alert("Permission denied.");
+    alert("Permission denied. Only Admins can save players.");
     return;
   }
 
-  // 1. Gather input values from Modal Form
   const editId = document.getElementById("editId")?.value || "p_" + Date.now();
   const name = document.getElementById("editName")?.value || "Player";
   const pos = document.getElementById("editPos")?.value || "Universal";
   const jersey = document.getElementById("editJersey")?.value || "0";
   const cardTheme = document.getElementById("editCardTheme")?.value || "gold";
+
+  // Read direct image URL input or check for custom uploaded frame
+  let cardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || "";
+  const customFrameFile = document.getElementById("editCustomCardFrame")?.files[0];
+
+  // If a PNG file was selected in the file input, convert it directly to Base64
+  if (customFrameFile) {
+    try {
+      cardUrl = await convertFileToBase64(customFrameFile);
+    } catch (err) {
+      console.error("Error converting file to Base64:", err);
+    }
+  }
 
   const stats = {
     atk: parseInt(document.getElementById("statAtk")?.value || 70),
@@ -536,10 +548,6 @@ window.handleSavePlayer = async function(e) {
 
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
-  // 2. Get uploaded photo file from file input
-  const photoInput = document.getElementById("editPhotoInput") || document.getElementById("playerPhoto");
-  const imageFile = (photoInput && photoInput.files) ? photoInput.files[0] : null;
-
   const playerData = {
     id: editId,
     name: name,
@@ -547,11 +555,29 @@ window.handleSavePlayer = async function(e) {
     jersey: jersey,
     stats: stats,
     ovr: ovr,
-    cardTheme: cardTheme
+    cardTheme: cardTheme,
+    cardImageUrl: cardUrl
   };
 
-  // 3. CALL FIREBASE SAVE FUNCTION (Triggers Python Backend)
-  await savePlayerToDatabase(playerData, imageFile);
+  // Save directly to Cloud Firestore
+  try {
+    await db.collection("players").doc(playerData.id).set({
+      name: playerData.name,
+      pos: playerData.pos,
+      jersey: playerData.jersey,
+      stats: playerData.stats,
+      ovr: playerData.ovr,
+      cardTheme: playerData.cardTheme,
+      cardImageUrl: playerData.cardImageUrl,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    console.log("Player successfully saved!");
+    if (typeof closePlayerModal === "function") closePlayerModal();
+  } catch (err) {
+    console.error("Error saving player to database:", err);
+    alert("Failed to save player: " + err.message);
+  }
 };
 
 window.handleDeletePlayer = function() {
@@ -643,13 +669,16 @@ function listenToPlayerRoster() {
       const pId = doc.id;
       const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
       
-      // Shows generated card URL from Python, or fallback gold background if still rendering
-      const cardImg = p.generatedCardUrl || 'assets/frames/gold.png';
+      // Use uploaded card image, generated URL, or default gold fallback
+      const cardImg = p.cardImageUrl || p.generatedCardUrl || 'assets/frames/gold.png';
 
       return `
         <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')">
           <div class="fifa-card-wrapper" style="position: relative; width: 220px; height: 320px;">
-            <img src="${cardImg}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: contain;">
+            <img src="${cardImg}" 
+                 alt="${p.name}" 
+                 style="width: 100%; height: 100%; object-fit: contain;"
+                 onerror="this.onerror=null; this.src='assets/frames/gold.png';">
             
             ${isAdmin ? `
               <div style="position: absolute; bottom: 12px; left: 0; right: 0; text-align: center;">
@@ -665,3 +694,13 @@ function listenToPlayerRoster() {
 
 // Start listening when DOM loads
 document.addEventListener("DOMContentLoaded", listenToPlayerRoster);
+
+// HELPER: Convert Uploaded File to Base64 String
+function convertFileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (error) => reject(error);
+  });
+}
