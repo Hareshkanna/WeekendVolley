@@ -719,76 +719,114 @@ renderDashboard();
 
 // LIVE ANIMATED GIF CARD RENDERER (CSS OVERLAY)
 // LIVE ANIMATED GIF CARD RENDERER (PURE OVERLAY)
+// 1. LISTEN TO FIRESTORE & SYNC GLOBAL PLAYERS ARRAY
 function listenToPlayerRoster() {
-  if (!window.firebase || !firebase.firestore) return;
+  if (!window.firebase || !firebase.firestore) {
+    renderRoster();
+    return;
+  }
 
-  firebase.firestore().collection("players").onSnapshot(snapshot => {
-    const grid = document.getElementById('rosterGrid');
-    if (!grid || snapshot.empty) return;
-
-    grid.innerHTML = snapshot.docs.map(doc => {
-      const p = doc.data();
-      const pId = doc.id;
-      const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
-
-      // FIX: Use ONLY the raw frame/GIF URL, ignoring old baked cardImageUrl
-      const bgGif = p.cardFrameUrl || 'assets/frames/gold.png';
-      const photo = p.photoUrl || p.photo || '';
-      const textColor = p.textColor || '#220e02';
-      const name = (p.name || 'PLAYER').toUpperCase();
-      const pos = (p.pos || 'OH').substring(0, 3).toUpperCase();
-      const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
-      const ovr = p.ovr || 70;
-
-      return `
-        <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
-             style="display:inline-block; margin: 10px; cursor: pointer; user-select: none;">
-          
-          <div style="position: relative; width: 220px; height: 330px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));">
-            
-            <!-- LAYER 1: RAW BLANK CARD FRAME / ANIMATED GIF -->
-            <img src="${bgGif}" alt="Card Frame" 
-                 style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;"
-                 onerror="this.onerror=null; this.src='assets/frames/gold.png';">
-
-            <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
-            ${photo ? `
-              <img src="${photo}" alt="${name}" 
-                   style="position: absolute; top: 42px; left: 45px; width: 130px; height: 130px; object-fit: contain; z-index: 2;">
-            ` : ''}
-
-            <!-- LAYER 3: OVR RATING & POSITION -->
-            <div style="position: absolute; top: 22px; left: 24px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
-              <div style="font-size: 32px; font-weight: 900; line-height: 1;">${ovr}</div>
-              <div style="font-size: 13px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
-            </div>
-
-            <!-- LAYER 4: PLAYER NAME -->
-            <div style="position: absolute; top: 188px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 16px; letter-spacing: 0.5px;">
-              ${name}
-            </div>
-
-            <!-- LAYER 5: STATS GRID -->
-            <div style="position: absolute; top: 232px; left: 35px; right: 35px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 3px; color: ${textColor}; font-family: sans-serif; font-size: 12px; font-weight: 900;">
-              <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">ATK</span></div>
-              <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">RCV</span></div>
-              <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">BLK</span></div>
-              <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">STM</span></div>
-              <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">SRV</span></div>
-              <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">TMW</span></div>
-            </div>
-
-            <!-- LAYER 6: EDIT BUTTON -->
-            ${isAdmin ? `
-              <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
-                      style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 80%; padding: 4px; font-size: 0.7rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
-            ` : ''}
-
-          </div>
-        </div>
-      `;
-    }).join('');
+  db.collection("players").onSnapshot(snapshot => {
+    if (snapshot && !snapshot.empty) {
+      // Sync Firestore data into the global players array
+      players = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    }
+    renderRoster();
+  }, err => {
+    console.error("Roster snapshot error:", err);
+    renderRoster();
   });
+}
+
+// 2. TOGGLE CARD SELECTION
+function toggleSelect(id) {
+  if (selectedPlayerIds.has(id)) {
+    selectedPlayerIds.delete(id);
+  } else {
+    selectedPlayerIds.add(id);
+  }
+  renderRoster(); // Re-renders cleanly from updated `players`
+}
+
+// 3. RENDER ROSTER FROM GLOBAL `players` ARRAY
+function renderRoster() {
+  const grid = document.getElementById('rosterGrid');
+  if (!grid) return;
+
+  if (!players || players.length === 0) {
+    grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players found.</p>';
+    return;
+  }
+
+  grid.innerHTML = players.map(p => {
+    const pId = p.id;
+    const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
+
+    // Card Layers
+    const bgGif = p.cardFrameUrl || p.cardImageUrl || 'assets/frames/gold.png';
+    const photo = p.photoUrl || p.photo || '';
+    const textColor = p.textColor || '#220e02';
+    const name = (p.name || 'PLAYER').toUpperCase();
+    const pos = (p.pos || 'OH').substring(0, 3).toUpperCase();
+    const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
+    const ovr = p.ovr || 70;
+
+    return `
+      <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
+           style="display:inline-block; margin: 10px; cursor: pointer; user-select: none;">
+        
+        <div style="position: relative; width: 220px; height: 330px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));">
+          
+          <!-- LAYER 1: RAW BLANK CARD FRAME / ANIMATED GIF -->
+          <img src="${bgGif}" alt="Card Frame" 
+               style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;"
+               onerror="this.onerror=null; this.src='assets/frames/gold.png';">
+
+          <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
+          ${photo ? `
+            <img src="${photo}" alt="${name}" 
+                 style="position: absolute; top: 42px; left: 45px; width: 130px; height: 130px; object-fit: contain; z-index: 2;">
+          ` : ''}
+
+          <!-- LAYER 3: OVR RATING & POSITION -->
+          <div style="position: absolute; top: 22px; left: 24px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
+            <div style="font-size: 32px; font-weight: 900; line-height: 1;">${ovr}</div>
+            <div style="font-size: 13px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
+          </div>
+
+          <!-- LAYER 4: PLAYER NAME -->
+          <div style="position: absolute; top: 188px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 16px; letter-spacing: 0.5px;">
+            ${name}
+          </div>
+
+          <!-- LAYER 5: STATS GRID -->
+          <div style="position: absolute; top: 232px; left: 35px; right: 35px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 3px; color: ${textColor}; font-family: sans-serif; font-size: 12px; font-weight: 900;">
+            <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">ATK</span></div>
+            <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">RCV</span></div>
+            <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">BLK</span></div>
+            <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">STM</span></div>
+            <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">SRV</span></div>
+            <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">TMW</span></div>
+          </div>
+
+          <!-- LAYER 6: EDIT BUTTON (ADMIN ONLY) -->
+          ${isAdmin ? `
+            <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
+                    style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 80%; padding: 4px; font-size: 0.7rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
+          ` : ''}
+
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const selectedCountEl = document.getElementById('selectedCount');
+  if (selectedCountEl) {
+    selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", listenToPlayerRoster);
