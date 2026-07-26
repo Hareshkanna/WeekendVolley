@@ -9,7 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 # 1. Initialize Firebase Admin SDK
 cred = credentials.Certificate("firebase_key.json")
 firebase_admin.initialize_app(cred, {
-    'storageBucket': 'YOUR_PROJECT_ID.appspot.com'  # Replace with your Firebase Storage bucket name
+    'storageBucket': 'WeekendVolley.appspot.com'  # Replace with your Firebase Storage bucket name
 })
 
 db = firestore.client()
