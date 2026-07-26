@@ -22,6 +22,7 @@ auth.onAuthStateChanged((user) => {
   
   renderRoster();
   renderMatchTab();
+  renderDashboard();
 });
 
 window.openLoginModal = function() {
@@ -36,13 +37,14 @@ window.closeLoginModal = function() {
 
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
-  const email = document.getElementById("loginEmail").value;
-  const pass = document.getElementById("loginPassword").value;
+  const email = document.getElementById("loginEmail")?.value;
+  const pass = document.getElementById("loginPassword")?.value;
 
   auth.signInWithEmailAndPassword(email, pass)
     .then(() => closeLoginModal())
     .catch((error) => {
-      document.getElementById("loginError").innerText = error.message;
+      const errEl = document.getElementById("loginError");
+      if (errEl) errEl.innerText = error.message;
     });
 };
 
@@ -72,14 +74,14 @@ let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
 
 function saveAll() {
+  localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
+  localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
+
   if (!window.db) return;
   db.collection("appData").doc("roster").set({
-    players: players,
     matchHistory: matchHistory,
     appSettings: appSettings
-  })
-  .then(() => console.log("Synced settings & history to Cloud!"))
-  .catch((err) => console.error("Cloud Save Error: ", err));
+  }).catch((err) => console.error("Cloud AppData Save Error: ", err));
 }
 
 function calcOVR(stats) {
@@ -193,7 +195,7 @@ window.importDataBackup = function(e) {
   reader.onload = function(event) {
     try {
       const parsed = JSON.parse(event.target.result);
-      if (parsed.players) players = parsed.players;
+      if (parsed.players) players = parsed.parsed;
       if (parsed.matchHistory) matchHistory = parsed.matchHistory;
       if (parsed.appSettings) appSettings = parsed.appSettings;
       saveAll();
@@ -266,7 +268,7 @@ window.removeUploadedCardDesign = function() {
 
 window.openPlayerModal = function(id = null) {
   if (!isAdmin) {
-    alert("Permission denied. Only Admins can edit players.");
+    alert("Permission denied. Only Admins can edit/add players.");
     return;
   }
 
@@ -314,7 +316,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// SAVE PLAYER TO FIRESTORE
+// SAVE PLAYER (OPTIMISTIC IMMEDIATE RENDER)
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -323,9 +325,10 @@ window.handleSavePlayer = async function(e) {
     return;
   }
 
-  const editId = document.getElementById("editId")?.value || "p_" + Date.now();
-  const name = document.getElementById("editName")?.value || "Player";
-  const pos = document.getElementById("editPos")?.value || "OH";
+  const rawId = document.getElementById("editId")?.value;
+  const editId = (rawId && rawId.trim() !== "") ? rawId.trim() : "p_" + Date.now();
+  const name = document.getElementById("editName")?.value?.trim() || "Player";
+  const pos = document.getElementById("editPos")?.value?.trim() || "OH";
   const jersey = document.getElementById("editJersey")?.value || "0";
   const textColor = document.getElementById("editTextColor")?.value || "#220e02";
 
@@ -360,21 +363,35 @@ window.handleSavePlayer = async function(e) {
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
   const playerData = {
-    id: editId,
+    id: String(editId),
     name, pos, jersey, stats, ovr,
     photoUrl, cardFrameUrl, textColor,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    mvps: currentEditingPlayer ? (currentEditingPlayer.mvps || 0) : 0,
+    updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
   };
 
-  try {
-    if (window.db) {
-      await db.collection("players").doc(editId).set(playerData, { merge: true });
-    }
+  // 1. Instantly update local array
+  const idx = players.findIndex(p => String(p.id) === String(editId));
+  if (idx >= 0) {
+    players[idx] = { ...players[idx], ...playerData };
+  } else {
+    players.push(playerData);
+  }
+  selectedPlayerIds.add(String(editId));
 
-    closePlayerModal();
-  } catch (err) {
-    console.error("Firestore Save Error:", err);
-    alert("Failed to save to cloud: " + err.message);
+  // 2. Immediately update screen UI & close modal
+  closePlayerModal();
+  renderRoster();
+  renderMatchTab();
+  renderDashboard();
+
+  // 3. Sync to Firestore in background
+  if (window.db) {
+    db.collection("players").doc(String(editId)).set(playerData, { merge: true })
+      .catch(err => {
+        console.error("Firestore Save Error:", err);
+        alert("Card updated locally, but cloud save failed: " + err.message);
+      });
   }
 };
 
@@ -388,10 +405,17 @@ window.handleDeletePlayer = function() {
   if (!editId) return;
 
   if (confirm("Are you sure you want to delete this player?")) {
+    players = players.filter(p => String(p.id) !== String(editId));
+    selectedPlayerIds.delete(String(editId));
+
+    closePlayerModal();
+    renderRoster();
+    renderMatchTab();
+    renderDashboard();
+
     if (window.db) {
       db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
     }
-    closePlayerModal();
   }
 };
 
@@ -407,15 +431,21 @@ window.handleBatchAdd = function() {
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: ''
     };
+    players.push(newP);
+    selectedPlayerIds.add(newId);
+
     if (window.db) {
       db.collection("players").doc(newId).set(newP);
     }
   });
 
   document.getElementById('batchNames').value = '';
+  renderRoster();
+  renderMatchTab();
+  renderDashboard();
 };
 
-// LISTEN TO FIRESTORE ROSTER (SINGLE SOURCE OF TRUTH FOR ALL DEVICES)
+// LISTEN TO FIRESTORE ROSTER
 function listenToPlayerRoster() {
   if (!window.firebase || !firebase.firestore || !window.db) return;
 
@@ -426,11 +456,7 @@ function listenToPlayerRoster() {
         id: String(doc.id)
       }));
       
-      if (selectedPlayerIds.size === 0) {
-        players.forEach(p => selectedPlayerIds.add(String(p.id)));
-      }
-    } else {
-      players = [];
+      players.forEach(p => selectedPlayerIds.add(String(p.id)));
     }
     renderRoster();
     renderMatchTab();
@@ -509,7 +535,7 @@ function renderRoster() {
   if (!grid) return;
 
   if (!players || players.length === 0) {
-    grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players found.</p>';
+    grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players found. Click "+ Add Player" to create one.</p>';
     return;
   }
 
