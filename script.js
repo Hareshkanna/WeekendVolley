@@ -34,8 +34,8 @@ window.closeLoginModal = function() {
   if (modal) modal.style.display = "none";
 };
 
-function handleLogin(e) {
-  e.preventDefault();
+window.handleLogin = function(e) {
+  if (e) e.preventDefault();
   const email = document.getElementById("loginEmail").value;
   const pass = document.getElementById("loginPassword").value;
 
@@ -44,15 +44,15 @@ function handleLogin(e) {
     .catch((error) => {
       document.getElementById("loginError").innerText = error.message;
     });
-}
+};
 
-function handleLogout() {
+window.handleLogout = function() {
   auth.signOut();
-}
+};
 
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 
-// GLOBAL STATE
+// GLOBAL APP STATE
 let players = [];
 let matchHistory = JSON.parse(localStorage.getItem('vb_hub_history')) || [];
 let appSettings = JSON.parse(localStorage.getItem('vb_hub_settings')) || {
@@ -71,12 +71,39 @@ let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
 
+function saveAll() {
+  if (!window.db) return;
+  db.collection("appData").doc("roster").set({
+    players: players,
+    matchHistory: matchHistory,
+    appSettings: appSettings
+  })
+  .then(() => console.log("Synced settings & history to Cloud!"))
+  .catch((err) => console.error("Cloud Save Error: ", err));
+}
+
 function calcOVR(stats) {
   const w = { atk:0.25, srv:0.20, rcv:0.20, blk:0.15, stm:0.10, tmw:0.10 };
   let sum = 0;
   for (let k in w) sum += (stats[k] || 70) * w[k];
   return Math.min(99, Math.max(1, Math.round(sum)));
 }
+
+// NAVIGATION SYSTEM
+window.switchTab = function(tabId, event) {
+  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  
+  const targetTab = document.getElementById(tabId);
+  if (targetTab) targetTab.classList.add('active');
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
+  if (tabId === 'dashboardTab') renderDashboard();
+  if (tabId === 'playersTab') renderRoster();
+  if (tabId === 'matchTab') renderMatchTab();
+  if (tabId === 'historyTab') renderHistory();
+  if (tabId === 'settingsTab') applySettings();
+};
 
 // THEME & SETTINGS
 const BACKGROUND_PRESETS = {
@@ -98,6 +125,119 @@ function applySettings() {
 
   if (document.getElementById('bgPresetSelect')) document.getElementById('bgPresetSelect').value = appSettings.bgPreset;
   if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor;
+}
+
+window.handleBgFileUpload = function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      appSettings.bgCustomPhoto = reader.result;
+      saveAll();
+      applySettings();
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+window.applyBgPreset = function(val) {
+  appSettings.bgPreset = val;
+  appSettings.bgCustomPhoto = '';
+  saveAll();
+  applySettings();
+};
+
+window.updateAppAccent = function(color) {
+  appSettings.accentColor = color;
+  saveAll();
+  applySettings();
+};
+
+window.handleGlobalCardDesignUpload = function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      appSettings.globalCardDesignImg = reader.result;
+      saveAll();
+      renderRoster();
+      renderMatchTab();
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+window.clearGlobalCardDesign = function() {
+  appSettings.globalCardDesignImg = '';
+  saveAll();
+  renderRoster();
+  renderMatchTab();
+};
+
+// BACKUP & RESTORE
+window.exportDataBackup = function() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `volleyball_hub_backup_${new Date().toISOString().slice(0,10)}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+};
+
+window.importDataBackup = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const parsed = JSON.parse(event.target.result);
+      if (parsed.players) players = parsed.players;
+      if (parsed.matchHistory) matchHistory = parsed.matchHistory;
+      if (parsed.appSettings) appSettings = parsed.appSettings;
+      saveAll();
+      applySettings();
+      renderRoster();
+      renderMatchTab();
+      renderHistory();
+      alert('Backup restored successfully!');
+    } catch (err) {
+      alert('Invalid backup JSON file.');
+    }
+  };
+  reader.readAsText(file);
+};
+
+// DASHBOARD RENDERER
+function renderDashboard() {
+  if (document.getElementById('dashTotalPlayers')) document.getElementById('dashTotalPlayers').innerText = players.length;
+  if (document.getElementById('dashTotalMatches')) document.getElementById('dashTotalMatches').innerText = matchHistory.length;
+
+  const sortedByMVP = [...players].sort((a,b) => (b.mvps || 0) - (a.mvps || 0));
+  const topMVP = sortedByMVP[0] && (sortedByMVP[0].mvps || 0) > 0 ? `${sortedByMVP[0].name} (${sortedByMVP[0].mvps})` : 'None';
+  if (document.getElementById('dashTopMVP')) document.getElementById('dashTopMVP').innerText = topMVP;
+
+  const topOvr = [...players].sort((a,b) => (b.ovr || 70) - (a.ovr || 70)).slice(0, 5);
+  const topList = document.getElementById('topPlayersList');
+  if (topList) {
+    topList.innerHTML = topOvr.map(p => `
+      <div class="list-row" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <span>${p.name} (${p.pos || 'OH'})</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${p.ovr || 70} OVR</span>
+      </div>
+    `).join('');
+  }
+
+  const mvpList = document.getElementById('mvpLeaderboardList');
+  if (mvpList) {
+    mvpList.innerHTML = sortedByMVP.map(p => `
+      <div class="list-row" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <span>${p.name}</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${p.mvps || 0} MVPs</span>
+      </div>
+    `).join('');
+  }
 }
 
 // MODAL CONTROLS
@@ -174,7 +314,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// SAVE PLAYER TO FIRESTORE DIRECTLY
+// SAVE PLAYER TO FIRESTORE
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -229,15 +369,12 @@ window.handleSavePlayer = async function(e) {
   try {
     if (window.db) {
       await db.collection("players").doc(editId).set(playerData, { merge: true });
-      alert("Saved to cloud successfully!");
-    } else {
-      alert("Firestore DB not connected!");
     }
 
     closePlayerModal();
   } catch (err) {
     console.error("Firestore Save Error:", err);
-    alert("Failed to save to cloud: " + err.message + "\n\nTip: If uploading large GIF files, use a direct Image URL instead to avoid the 1MB cloud size limit.");
+    alert("Failed to save to cloud: " + err.message);
   }
 };
 
@@ -252,19 +389,35 @@ window.handleDeletePlayer = function() {
 
   if (confirm("Are you sure you want to delete this player?")) {
     if (window.db) {
-      db.collection("players").doc(editId).delete()
-        .then(() => alert("Player deleted from cloud!"))
-        .catch(e => console.error("Error deleting doc:", e));
+      db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
     }
     closePlayerModal();
   }
 };
 
+window.handleBatchAdd = function() {
+  const txt = document.getElementById('batchNames')?.value?.trim();
+  if (!txt) return;
+
+  txt.split('\n').map(n => n.trim()).filter(Boolean).forEach((name, i) => {
+    const defaultStats = { atk:70, srv:70, rcv:70, blk:70, stm:70, tmw:70 };
+    const newId = "p_" + Date.now() + "_" + i;
+    const newP = {
+      id: newId,
+      name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
+      photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: ''
+    };
+    if (window.db) {
+      db.collection("players").doc(newId).set(newP);
+    }
+  });
+
+  document.getElementById('batchNames').value = '';
+};
+
 // LISTEN TO FIRESTORE ROSTER (SINGLE SOURCE OF TRUTH FOR ALL DEVICES)
 function listenToPlayerRoster() {
-  if (!window.firebase || !firebase.firestore || !window.db) {
-    return;
-  }
+  if (!window.firebase || !firebase.firestore || !window.db) return;
 
   db.collection("players").onSnapshot(snapshot => {
     if (snapshot && !snapshot.empty) {
@@ -382,7 +535,7 @@ function renderMatchTab() {
   grid.innerHTML = players.map(p => createCardHTML(p, String(p.id), selectedPlayerIds.has(String(p.id)), false)).join('');
 }
 
-function toggleSelect(id) {
+window.toggleSelect = function(id) {
   const strId = String(id);
   if (selectedPlayerIds.has(strId)) {
     selectedPlayerIds.delete(strId);
@@ -391,9 +544,9 @@ function toggleSelect(id) {
   }
   renderRoster();
   renderMatchTab();
-}
+};
 
-function selectAllPlayers(val) {
+window.selectAllPlayers = function(val) {
   if (val) {
     selectedPlayerIds = new Set(players.map(p => String(p.id)));
   } else {
@@ -401,10 +554,10 @@ function selectAllPlayers(val) {
   }
   renderRoster();
   renderMatchTab();
-}
+};
 
 // MATCHMAKING ENGINE
-function generateMatch(balanced) {
+window.generateMatch = function(balanced) {
   const pool = players.filter(p => selectedPlayerIds.has(String(p.id)));
   if (pool.length < 2) return alert(`Select at least 2 players! Currently selected: ${pool.length}`);
 
@@ -456,37 +609,64 @@ function generateMatch(balanced) {
     mvpSelect.innerHTML = '<option value="">Select Match MVP (Optional)</option>' +
       pool.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
   }
-}
+};
 
-// RENDER DASHBOARD
-function renderDashboard() {
-  if (document.getElementById('dashTotalPlayers')) document.getElementById('dashTotalPlayers').innerText = players.length;
-  if (document.getElementById('dashTotalMatches')) document.getElementById('dashTotalMatches').innerText = matchHistory.length;
+window.saveMatchResult = function() {
+  if (!currentMatchData) return;
 
-  const sortedByMVP = [...players].sort((a,b) => (b.mvps || 0) - (a.mvps || 0));
-  const topMVP = sortedByMVP[0] && (sortedByMVP[0].mvps || 0) > 0 ? `${sortedByMVP[0].name} (${sortedByMVP[0].mvps})` : 'None';
-  if (document.getElementById('dashTopMVP')) document.getElementById('dashTopMVP').innerText = topMVP;
+  const scoreA = Number(document.getElementById('scoreA')?.value) || 0;
+  const scoreB = Number(document.getElementById('scoreB')?.value) || 0;
+  const mvpId = document.getElementById('mvpSelect')?.value;
 
-  const topOvr = [...players].sort((a,b) => b.ovr - a.ovr).slice(0, 5);
-  const topList = document.getElementById('topPlayersList');
-  if (topList) {
-    topList.innerHTML = topOvr.map(p => `
-      <div class="list-row">
-        <span>${p.name} (${p.pos})</span>
-        <span style="font-weight:bold; color:var(--accent-color);">${p.ovr} OVR</span>
-      </div>
-    `).join('');
+  if (mvpId) {
+    const mvpPlayer = players.find(p => String(p.id) === String(mvpId));
+    if (mvpPlayer) {
+      mvpPlayer.mvps = (mvpPlayer.mvps || 0) + 1;
+      if (window.db) {
+        db.collection("players").doc(mvpPlayer.id).update({ mvps: mvpPlayer.mvps });
+      }
+    }
   }
 
-  const mvpList = document.getElementById('mvpLeaderboardList');
-  if (mvpList) {
-    mvpList.innerHTML = sortedByMVP.map(p => `
-      <div class="list-row">
-        <span>${p.name}</span>
-        <span style="font-weight:bold; color:var(--accent-color);">${p.mvps || 0} MVPs</span>
-      </div>
-    `).join('');
+  const record = {
+    id: Date.now().toString(),
+    date: new Date().toLocaleDateString(),
+    teamA: currentMatchData.teamA.map(p => p.name),
+    teamB: currentMatchData.teamB.map(p => p.name),
+    scoreA, scoreB,
+    mvpName: mvpId ? players.find(p => String(p.id) === String(mvpId))?.name : 'None'
+  };
+
+  matchHistory.unshift(record);
+  saveAll();
+  alert('Match saved successfully!');
+  const panel = document.getElementById('generatedMatchPanel');
+  if (panel) panel.style.display = 'none';
+};
+
+// MATCH HISTORY RENDERER
+function renderHistory() {
+  const container = document.getElementById('historyContainer');
+  if (!container) return;
+
+  if (matchHistory.length === 0) {
+    container.innerHTML = '<p class="sub-text" style="color:#94a3b8;">No past matches recorded yet.</p>';
+    return;
   }
+
+  container.innerHTML = matchHistory.map(m => `
+    <div class="history-card" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1);">
+      <div class="history-header" style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+        <span style="color: #94a3b8; font-size: 0.8rem;">${m.date}</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${m.scoreA} - ${m.scoreB}</span>
+      </div>
+      <div class="history-teams" style="font-size: 0.85rem;">
+        <div><strong style="color:#fbbf24;">Team A:</strong> ${m.teamA.join(', ')}</div>
+        <div><strong style="color:#60a5fa;">Team B:</strong> ${m.teamB.join(', ')}</div>
+      </div>
+      ${m.mvpName !== 'None' ? `<div class="mvp-badge" style="margin-top: 6px; font-size: 0.8rem; color: #fbbf24;">⭐ MVP: ${m.mvpName}</div>` : ''}
+    </div>
+  `).join('');
 }
 
 function convertFileToBase64(file) {
@@ -501,4 +681,5 @@ function convertFileToBase64(file) {
 document.addEventListener("DOMContentLoaded", () => {
   listenToPlayerRoster();
   applySettings();
+  renderDashboard();
 });
