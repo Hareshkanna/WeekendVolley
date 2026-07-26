@@ -84,8 +84,8 @@ def process_unrendered_players():
         p_id = doc.id
 
         # Skip if card is already generated
-        if p_data.get("generatedCardUrl"):
-            continue
+ #       if p_data.get("generatedCardUrl"):
+  #          continue
 
         print(f"Processing card for: {p_data.get('name')}...")
 
