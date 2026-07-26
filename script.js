@@ -630,7 +630,7 @@ function generatePlayerCardImage(p) {
 
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
-  
+
   if (!isAdmin) {
     alert("Permission denied. Only Admins can save players.");
     return;
@@ -640,7 +640,6 @@ window.handleSavePlayer = async function(e) {
   const name = document.getElementById("editName")?.value || "Player";
   const pos = document.getElementById("editPos")?.value || "Universal";
   const jersey = document.getElementById("editJersey")?.value || "0";
-  const cardTheme = document.getElementById("editCardTheme")?.value || "gold";
 
   const photoFile = document.getElementById("editPhoto")?.files[0];
   const customFrameFile = document.getElementById("editCustomCardFrame")?.files[0];
@@ -651,6 +650,10 @@ window.handleSavePlayer = async function(e) {
 
   if (photoFile && !photoUrl) photoUrl = await convertFileToBase64(photoFile);
   if (customFrameFile && !cardFrameUrl) cardFrameUrl = await convertFileToBase64(customFrameFile);
+
+  // Check manual removals
+  if (typeof isPhotoRemoved !== 'undefined' && isPhotoRemoved) photoUrl = "";
+  if (typeof isCardFrameRemoved !== 'undefined' && isCardFrameRemoved) cardFrameUrl = "";
 
   const stats = {
     atk: parseInt(document.getElementById("statAtk")?.value || 70),
@@ -663,58 +666,16 @@ window.handleSavePlayer = async function(e) {
 
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
-  if (isPhotoRemoved) {
-    photoUrl = "";
-    tempPhotoBase64 = "";
-  }
-
-  if (isCardFrameRemoved) {
-    cardFrameUrl = "";
-    tempPlayerCardFrameBase64 = "";
-    directCardUrl = "";
-  }
-
-  const finalGeneratedCardUrl = await generatePlayerCardImage({
-    name, pos, ovr, stats, photoUrl, cardFrameUrl
-  });
-
-  const playerData = {
-    id: editId,
-    name: name,
-    pos: pos,
-    jersey: jersey,
-    stats: stats,
-    ovr: ovr,
-    cardTheme: cardTheme,
-    cardImageUrl: finalGeneratedCardUrl
-  };
-
-  // Update local array for instantaneous UI updates
-  const existingIndex = players.findIndex(p => p.id === editId);
-  if (existingIndex >= 0) {
-    players[existingIndex] = { ...players[existingIndex], ...playerData };
-  } else {
-    players.push(playerData);
-    selectedPlayerIds.add(editId);
-  }
-
   try {
-    await db.collection("players").doc(playerData.id).set({
-      name: playerData.name,
-      pos: playerData.pos,
-      jersey: playerData.jersey,
-      stats: playerData.stats,
-      ovr: playerData.ovr,
-      cardTheme: playerData.cardTheme,
-      cardImageUrl: playerData.cardImageUrl,
+    await db.collection("players").doc(editId).set({
+      name, pos, jersey, stats, ovr,
+      photoUrl, cardFrameUrl,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
 
-    saveAll();
+    if (typeof saveAll === "function") saveAll();
     closePlayerModal();
-    renderRoster();
   } catch (err) {
-    console.error("Error saving player to database:", err);
     alert("Failed to save player: " + err.message);
   }
 };
@@ -756,6 +717,7 @@ syncCloudData();
 applySettings();
 renderDashboard();
 
+// LIVE ANIMATED GIF CARD RENDERER (CSS OVERLAY)
 function listenToPlayerRoster() {
   if (!window.firebase || !firebase.firestore) return;
 
@@ -767,15 +729,59 @@ function listenToPlayerRoster() {
       const p = doc.data();
       const pId = doc.id;
       const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
-      const cardImg = p.cardImageUrl || p.generatedCardUrl || 'assets/frames/gold.png';
+
+      // Card Layers
+      const bgGif = p.cardFrameUrl || p.cardImageUrl || 'assets/frames/gold.png';
+      const photo = p.photoUrl || p.photo || '';
+      const textColor = p.textColor || '#220e02';
+      const name = (p.name || 'PLAYER').toUpperCase();
+      const pos = (p.pos || 'OH').substring(0, 3).toUpperCase();
+      const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
+      const ovr = p.ovr || 70;
 
       return `
-        <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" style="display:inline-block; margin:8px; cursor:pointer;">
-          <div style="position: relative; width: 220px; height: 330px;">
-            <img src="${cardImg}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: contain; display: block;">
-            ${isAdmin ? `
-              <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); width: 80%; padding: 4px 8px; font-size: 0.75rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px;">Edit Card</button>
+        <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
+             style="display:inline-block; margin: 10px; cursor: pointer; user-select: none;">
+          
+          <div style="position: relative; width: 220px; height: 330px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));">
+            
+            <!-- LAYER 1: ANIMATED GIF BACKGROUND FRAME -->
+            <img src="${bgGif}" alt="Card GIF" 
+                 style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;">
+
+            <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
+            ${photo ? `
+              <img src="${photo}" alt="${name}" 
+                   style="position: absolute; top: 42px; left: 45px; width: 130px; height: 130px; object-fit: contain; z-index: 2;">
             ` : ''}
+
+            <!-- LAYER 3: OVR RATING & POSITION (TOP LEFT) -->
+            <div style="position: absolute; top: 22px; left: 24px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
+              <div style="font-size: 32px; font-weight: 900; line-height: 1;">${ovr}</div>
+              <div style="font-size: 13px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
+            </div>
+
+            <!-- LAYER 4: PLAYER NAME BANNER -->
+            <div style="position: absolute; top: 188px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 16px; letter-spacing: 0.5px;">
+              ${name}
+            </div>
+
+            <!-- LAYER 5: VOLLEYBALL STATS GRID (2 COLUMNS) -->
+            <div style="position: absolute; top: 232px; left: 35px; right: 35px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 3px; color: ${textColor}; font-family: sans-serif; font-size: 12px; font-weight: 900;">
+              <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">ATK</span></div>
+              <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">RCV</span></div>
+              <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">BLK</span></div>
+              <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">STM</span></div>
+              <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">SRV</span></div>
+              <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">TMW</span></div>
+            </div>
+
+            <!-- LAYER 6: ADMIN EDIT BUTTON -->
+            ${isAdmin ? `
+              <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
+                      style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 80%; padding: 4px; font-size: 0.7rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
+            ` : ''}
+
           </div>
         </div>
       `;
