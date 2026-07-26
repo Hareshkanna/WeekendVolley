@@ -267,62 +267,28 @@ function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
 
-  // Toggle "+ Add Player" button visibility based on Admin status
-  const addBtn = document.querySelector(".modal-btn");
-  if (addBtn) {
-    addBtn.style.display = isAdmin ? "inline-block" : "none";
-  }
-
-  // Hide "Batch Add" panel if not Admin
-  const batchPanel = document.getElementById("batchNames")?.closest(".panel");
-  if (batchPanel) {
-    batchPanel.style.display = isAdmin ? "block" : "none";
-  }
-
   grid.innerHTML = players.map(p => {
     const isSel = selectedPlayerIds.has(p.id);
-    const style = getPlayerCardStyle(p);
-    const customCardImg = p.customCardFrame || appSettings.globalCardDesignImg;
+    
+    // Path to Python-rendered image card or fallback
+    const cardImgPath = p.generatedCardUrl || `cards/${p.id}.png`;
 
     return `
       <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${p.id}')">
-        <div class="fifa-card-shield ${!customCardImg ? 'use-polygon-clip use-preset-border' : ''}" 
-             style="background: ${customCardImg ? 'transparent' : style.gradient}; color: ${customCardImg ? '#3a1300' : style.text};">
+        <div class="fifa-card-shield" style="background: transparent;">
           
-          ${customCardImg ? `<img src="${customCardImg}" class="fifa-custom-frame-img" alt="Card Template">` : '<div class="fifa-card-texture"></div>'}
+          <!-- Python Generated FIFA Card Graphic -->
+          <img src="${cardImgPath}" 
+               onerror="this.onerror=null; this.src='assets/frames/gold.png';" 
+               alt="${p.name} Card" 
+               style="width: 100%; height: 100%; object-fit: contain;">
 
-          <!-- Rating & Position Stack -->
-          <div class="fut-badge-stack">
-            <div class="fut-ovr">${p.ovr}</div>
-            <div class="fut-pos">${p.pos ? p.pos.substring(0,3) : 'UNI'}</div>
-            <div class="fut-line-separator"></div>
-            <div class="fut-jersey">#${p.jersey || '0'}</div>
-          </div>
-
-          <!-- Cutout Render Canvas -->
-          <div class="fut-player-render">
-            <img src="${p.photo || ''}" alt="${p.name}">
-          </div>
-
-          <!-- Player Name Banner -->
-          <div class="fut-name-ribbon">${p.name}</div>
-
-          <!-- FUT Stats Columns -->
-          <div class="fut-stats-grid">
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.atk || 70}</span><span class="fut-stat-lbl">ATK</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.blk || 70}</span><span class="fut-stat-lbl">BLK</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.srv || 70}</span><span class="fut-stat-lbl">SRV</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.stm || 70}</span><span class="fut-stat-lbl">STM</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.rcv || 70}</span><span class="fut-stat-lbl">RCV</span></div>
-            <div class="fut-stat-item"><span class="fut-stat-val">${p.stats?.tmw || 70}</span><span class="fut-stat-lbl">TMW</span></div>
-          </div>
-
-          <!-- Edit Action Button (ONLY VISIBLE IF ADMIN) -->
-            ${isAdmin ? `
-             <div class="fut-card-actions">
-             <button onclick="event.stopPropagation(); openPlayerModal('${p.id}')" class="btn btn-sec btn-sm">Edit Card</button>
-                </div>
-               ` : ''}
+          <!-- Edit Action Button (Admin Only Overlay) -->
+          ${isAdmin ? `
+            <div class="fut-card-actions" style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center;">
+              <button onclick="event.stopPropagation(); openPlayerModal('${p.id}')" class="btn btn-sec btn-sm">Edit Card</button>
+            </div>
+          ` : ''}
 
         </div>
       </div>
@@ -544,18 +510,20 @@ document.getElementById('editCustomCardFrame').addEventListener('change', (e) =>
   }
 });
 
-window.handleSavePlayer = function(e) {
-  e.preventDefault();
+window.handleSavePlayer = async function(e) {
+  if (e) e.preventDefault();
   
   if (!isAdmin) {
-    alert("Permission denied. Only Admins can edit or save player profiles.");
+    alert("Permission denied.");
     return;
   }
 
-  const editId = document.getElementById("editId").value;
-  const name = document.getElementById("editName").value;
-  const pos = document.getElementById("editPos") ? document.getElementById("editPos").value : "Universal";
-  const jersey = document.getElementById("editJersey") ? document.getElementById("editJersey").value : "0";
+  // 1. Gather input values from Modal Form
+  const editId = document.getElementById("editId")?.value || "p_" + Date.now();
+  const name = document.getElementById("editName")?.value || "Player";
+  const pos = document.getElementById("editPos")?.value || "Universal";
+  const jersey = document.getElementById("editJersey")?.value || "0";
+  const cardTheme = document.getElementById("editCardTheme")?.value || "gold";
 
   const stats = {
     atk: parseInt(document.getElementById("statAtk")?.value || 70),
@@ -566,36 +534,24 @@ window.handleSavePlayer = function(e) {
     tmw: parseInt(document.getElementById("statTmw")?.value || 70)
   };
 
-  // Calculate Overall (OVR) rating
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
-  if (editId) {
-    // Update existing player profile
-    const index = players.findIndex(p => p.id === editId);
-    if (index !== -1) {
-      players[index].name = name;
-      players[index].pos = pos;
-      players[index].jersey = jersey;
-      players[index].stats = stats;
-      players[index].ovr = ovr;
-    }
-  } else {
-    // Add new player profile
-    const newPlayer = {
-      id: "p_" + Date.now(),
-      name: name,
-      pos: pos,
-      jersey: jersey,
-      stats: stats,
-      ovr: ovr,
-      photo: ""
-    };
-    players.push(newPlayer);
-  }
+  // 2. Get uploaded photo file from file input
+  const photoInput = document.getElementById("editPhotoInput") || document.getElementById("playerPhoto");
+  const imageFile = (photoInput && photoInput.files) ? photoInput.files[0] : null;
 
-  saveAll(); // Save to Firebase Firestore
-  closePlayerModal();
-  renderRoster();
+  const playerData = {
+    id: editId,
+    name: name,
+    pos: pos,
+    jersey: jersey,
+    stats: stats,
+    ovr: ovr,
+    cardTheme: cardTheme
+  };
+
+  // 3. CALL FIREBASE SAVE FUNCTION (Triggers Python Backend)
+  await savePlayerToDatabase(playerData, imageFile);
 };
 
 window.handleDeletePlayer = function() {
@@ -636,3 +592,76 @@ syncCloudData();
 // INITIAL LOAD
 applySettings();
 renderDashboard();
+
+/* ==========================================================================
+   FIREBASE BACKEND INTEGRATION (SENDS DATA TO PYTHON CARD GENERATOR)
+   ========================================================================== */
+
+// 1. Helper function to upload photo & save player data to Firebase Firestore
+async function savePlayerToDatabase(playerData, imageFile) {
+  try {
+    let photoUrl = "";
+    
+    // Upload raw player photo to Firebase Storage if an image was picked
+    if (imageFile) {
+      const storageRef = firebase.storage().ref(`raw_photos/${playerData.id}.png`);
+      await storageRef.put(imageFile);
+      photoUrl = await storageRef.getDownloadURL();
+    }
+
+    // Save document into Firestore database
+    await firebase.firestore().collection("players").doc(playerData.id).set({
+      name: playerData.name,
+      pos: playerData.pos,
+      jersey: playerData.jersey,
+      stats: playerData.stats,
+      ovr: playerData.ovr,
+      cardTheme: playerData.cardTheme || "gold",
+      rawPhotoUrl: photoUrl,
+      generatedCardUrl: "", // Python worker script will process this and upload card URL here
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log("Player successfully saved to Firestore!");
+    if (typeof closePlayerModal === "function") closePlayerModal();
+  } catch (err) {
+    console.error("Error saving player to database:", err);
+    alert("Failed to save player to Firebase. Check console for details.");
+  }
+}
+
+// 2. Real-time Listener: Updates Roster grid automatically when Python uploads generated card
+function listenToPlayerRoster() {
+  if (!window.firebase || !firebase.firestore) return;
+
+  firebase.firestore().collection("players").onSnapshot(snapshot => {
+    const grid = document.getElementById('rosterGrid');
+    if (!grid) return;
+
+    grid.innerHTML = snapshot.docs.map(doc => {
+      const p = doc.data();
+      const pId = doc.id;
+      const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
+      
+      // Shows generated card URL from Python, or fallback gold background if still rendering
+      const cardImg = p.generatedCardUrl || 'assets/frames/gold.png';
+
+      return `
+        <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')">
+          <div class="fifa-card-wrapper" style="position: relative; width: 220px; height: 320px;">
+            <img src="${cardImg}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: contain;">
+            
+            ${isAdmin ? `
+              <div style="position: absolute; bottom: 12px; left: 0; right: 0; text-align: center;">
+                <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm">Edit Card</button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+  });
+}
+
+// Start listening when DOM loads
+document.addEventListener("DOMContentLoaded", listenToPlayerRoster);
