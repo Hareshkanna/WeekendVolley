@@ -109,8 +109,8 @@ def process_unrendered_players():
         p_id = doc.id
 
         # Comment this check out temporarily if you want to force re-generating all cards
-        if p_data.get("generatedCardUrl"):
-            continue
+       # if p_data.get("generatedCardUrl"):
+       #     continue
 
         print(f"Processing card for: {p_data.get('name', 'Unknown')} ({p_id})...")
 
