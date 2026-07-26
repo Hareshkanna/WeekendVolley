@@ -421,37 +421,61 @@ function toggleCustomColorInputs(themeVal) {
   row.style.display = (themeVal === 'custom') ? 'grid' : 'none';
 }
 
+// TRACK EDITING STATE & REMOVALS
+let currentEditingPlayer = null;
+let isPhotoRemoved = false;
+let isCardFrameRemoved = false;
+
+window.removeUploadedPhoto = function() {
+  const photoInput = document.getElementById("editPhoto");
+  if (photoInput) photoInput.value = "";
+  tempPhotoBase64 = "";
+  isPhotoRemoved = true;
+  alert("Photo cleared! Click 'Save Card' to confirm.");
+};
+
+window.removeUploadedCardDesign = function() {
+  const frameInput = document.getElementById("editCustomCardFrame");
+  const urlInput = document.getElementById("editCardImageUrl");
+  if (frameInput) frameInput.value = "";
+  if (urlInput) urlInput.value = "";
+  tempPlayerCardFrameBase64 = "";
+  isCardFrameRemoved = true;
+  alert("Card template cleared! Click 'Save Card' to confirm.");
+};
+
+// OPEN MODAL HANDLER
 window.openPlayerModal = function(id = null) {
-  // Reset removal flags whenever modal opens
-  isPhotoRemoved = false;
-  isCardFrameRemoved = false;
-  
   if (!isAdmin) {
     alert("Permission denied. Only Admins can edit players.");
     return;
   }
 
+  isPhotoRemoved = false;
+  isCardFrameRemoved = false;
+  tempPhotoBase64 = "";
+  tempPlayerCardFrameBase64 = "";
+
   const modal = document.getElementById("playerModal");
   if (!modal) return;
 
-  document.body.classList.add("modal-open");
-
   if (id) {
-    const p = players.find(player => player.id === id);
-    if (p) {
-      if (document.getElementById("editId")) document.getElementById("editId").value = p.id;
-      if (document.getElementById("editName")) document.getElementById("editName").value = p.name || "";
-      if (document.getElementById("editPos")) document.getElementById("editPos").value = p.pos || "Universal";
-      if (document.getElementById("editJersey")) document.getElementById("editJersey").value = p.jersey || "";
-      if (document.getElementById("editCardImageUrl")) document.getElementById("editCardImageUrl").value = p.cardImageUrl || p.generatedCardUrl || "";
+    currentEditingPlayer = players.find(p => p.id === id) || null;
+    if (currentEditingPlayer) {
+      if (document.getElementById("editId")) document.getElementById("editId").value = currentEditingPlayer.id;
+      if (document.getElementById("editName")) document.getElementById("editName").value = currentEditingPlayer.name || "";
+      if (document.getElementById("editPos")) document.getElementById("editPos").value = currentEditingPlayer.pos || "OH";
+      if (document.getElementById("editJersey")) document.getElementById("editJersey").value = currentEditingPlayer.jersey || "0";
+      if (document.getElementById("editTextColor")) document.getElementById("editTextColor").value = currentEditingPlayer.textColor || "#220e02";
+      if (document.getElementById("editCardImageUrl")) document.getElementById("editCardImageUrl").value = currentEditingPlayer.cardFrameUrl || "";
 
-      if (p.stats) {
-        if (document.getElementById("statAtk")) document.getElementById("statAtk").value = p.stats.atk || 70;
-        if (document.getElementById("statSrv")) document.getElementById("statSrv").value = p.stats.srv || 70;
-        if (document.getElementById("statRcv")) document.getElementById("statRcv").value = p.stats.rcv || 70;
-        if (document.getElementById("statBlk")) document.getElementById("statBlk").value = p.stats.blk || 70;
-        if (document.getElementById("statStm")) document.getElementById("statStm").value = p.stats.stm || 70;
-        if (document.getElementById("statTmw")) document.getElementById("statTmw").value = p.stats.tmw || 70;
+      if (currentEditingPlayer.stats) {
+        if (document.getElementById("statAtk")) document.getElementById("statAtk").value = currentEditingPlayer.stats.atk || 70;
+        if (document.getElementById("statSrv")) document.getElementById("statSrv").value = currentEditingPlayer.stats.srv || 70;
+        if (document.getElementById("statRcv")) document.getElementById("statRcv").value = currentEditingPlayer.stats.rcv || 70;
+        if (document.getElementById("statBlk")) document.getElementById("statBlk").value = currentEditingPlayer.stats.blk || 70;
+        if (document.getElementById("statStm")) document.getElementById("statStm").value = currentEditingPlayer.stats.stm || 70;
+        if (document.getElementById("statTmw")) document.getElementById("statTmw").value = currentEditingPlayer.stats.tmw || 70;
 
         ['Atk', 'Srv', 'Rcv', 'Blk', 'Stm', 'Tmw'].forEach(s => {
           const lbl = document.getElementById(`lbl${s}`);
@@ -459,175 +483,19 @@ window.openPlayerModal = function(id = null) {
           if (lbl && input) lbl.innerText = input.value;
         });
       }
-
-      const modalTitle = document.getElementById("modalTitle");
-      if (modalTitle) modalTitle.innerText = "Edit Player Card";
     }
   } else {
+    currentEditingPlayer = null;
     const form = document.getElementById("playerForm");
     if (form) form.reset();
     if (document.getElementById("editId")) document.getElementById("editId").value = "";
-    const modalTitle = document.getElementById("modalTitle");
-    if (modalTitle) modalTitle.innerText = "Add New Player";
+    if (document.getElementById("editTextColor")) document.getElementById("editTextColor").value = "#220e02";
   }
 
   modal.style.display = "block";
-  modal.scrollTop = 0;
 };
 
-window.closePlayerModal = function() {
-  const modal = document.getElementById("playerModal");
-  if (modal) modal.style.display = "none";
-  document.body.classList.remove("modal-open");
-};
-
-function updateSliderLbl(k) {
-  document.getElementById(`lbl${k}`).innerText = document.getElementById(`stat${k}`).value;
-}
-
-if (document.getElementById('editPhoto')) {
-  document.getElementById('editPhoto').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => { tempPhotoBase64 = reader.result; };
-      reader.readAsDataURL(file);
-    }
-  });
-}
-
-if (document.getElementById('editCustomCardFrame')) {
-  document.getElementById('editCustomCardFrame').addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => { tempPlayerCardFrameBase64 = reader.result; };
-      reader.readAsDataURL(file);
-    }
-  });
-}
-
-// CANVAS GENERATOR ENGINE
-// ADVANCED FIFA ULTIMATE TEAM CANVAS CARD GENERATOR
-// CLEAN CARD GENERATOR - NO EXTRA BORDERS OR GRAY BOXES
-function generatePlayerCardImage(p) {
-  return new Promise((resolve) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 400;
-    canvas.height = 600;
-    const ctx = canvas.getContext("2d");
-
-    // Clear background transparently
-    ctx.clearRect(0, 0, 400, 600);
-
-    const loadImage = (src) => new Promise((res) => {
-      if (!src) return res(null);
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.onload = () => res(img);
-      img.onerror = () => res(null);
-      img.src = src;
-    });
-
-    Promise.all([
-      loadImage(p.cardFrameUrl), // Uploaded custom card template
-      loadImage(p.photoUrl)      // Player photo cutout
-    ]).then(([frameImg, photoImg]) => {
-
-      // 1. DRAW CUSTOM CARD GRAPHIC DIRECTLY (NO SHIELD CLIPPING / NO BORDERS)
-      if (frameImg) {
-        ctx.drawImage(frameImg, 0, 0, 400, 600);
-      } else {
-        // Simple fallback gold background
-        const grad = ctx.createLinearGradient(0, 0, 0, 600);
-        grad.addColorStop(0, "#fef08a");
-        grad.addColorStop(0.5, "#f59e0b");
-        grad.addColorStop(1, "#78350f");
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(15, 15, 370, 570, 24);
-        ctx.fill();
-      }
-
-      // 2. DRAW PLAYER PHOTO CUTOUT ON TOP
-      if (photoImg) {
-        ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,0.3)";
-        ctx.shadowBlur = 8;
-        ctx.drawImage(photoImg, 80, 80, 250, 250);
-        ctx.restore();
-      }
-
-      // TEXT COLOR FOR DETAILS
-      const textColor = "#220e02"; // Dark brown text suited for gold cards
-
-      // 3. OVERALL RATING & POSITION (TOP LEFT)
-      ctx.fillStyle = textColor;
-      ctx.textAlign = "center";
-
-      // Rating
-      ctx.font = "900 62px 'Arial Black', sans-serif";
-      ctx.fillText(p.ovr || 70, 85, 115);
-
-      // Position
-      ctx.font = "800 24px sans-serif";
-      ctx.fillText((p.pos || "OH").substring(0, 3).toUpperCase(), 85, 148);
-
-      // Position separator line
-      ctx.strokeStyle = "rgba(34, 14, 2, 0.4)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(55, 160);
-      ctx.lineTo(115, 160);
-      ctx.stroke();
-
-      // 4. PLAYER NAME (CENTER BANNER)
-      ctx.font = "900 32px 'Arial Black', sans-serif";
-      ctx.fillText((p.name || "PLAYER").toUpperCase(), 200, 355);
-
-      // Name separator line
-      ctx.strokeStyle = "rgba(34, 14, 2, 0.3)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(40, 368);
-      ctx.lineTo(360, 368);
-      ctx.stroke();
-
-      // 5. STATS DIRECTLY ON TOP OF CARD (NO GRAY CONTAINER)
-      const stats = [
-        { label: "ATK", val: p.stats?.atk || 70 },
-        { label: "RCV", val: p.stats?.rcv || 70 },
-        { label: "BLK", val: p.stats?.blk || 70 },
-        { label: "STM", val: p.stats?.stm || 70 },
-        { label: "SRV", val: p.stats?.srv || 70 },
-        { label: "TMW", val: p.stats?.tmw || 70 },
-      ];
-
-      const col1X = 135, col2X = 275;
-      const startY = 425, rowHeight = 44;
-
-      stats.forEach((st, idx) => {
-        const x = idx % 2 === 0 ? col1X : col2X;
-        const y = startY + (Math.floor(idx / 2) * rowHeight);
-
-        // Stat Value
-        ctx.fillStyle = textColor;
-        ctx.textAlign = "right";
-        ctx.font = "900 24px sans-serif";
-        ctx.fillText(st.val, x - 8, y);
-
-        // Stat Label
-        ctx.textAlign = "left";
-        ctx.font = "700 18px sans-serif";
-        ctx.fillText(st.label, x + 2, y);
-      });
-
-      // Export transparent PNG string
-      resolve(canvas.toDataURL("image/png"));
-    });
-  });
-}
-
+// SAVE PLAYER HANDLER (PRESERVES IMAGES WHEN ONLY CHANGING TEXT COLOR OR STATS)
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -638,22 +506,39 @@ window.handleSavePlayer = async function(e) {
 
   const editId = document.getElementById("editId")?.value || "p_" + Date.now();
   const name = document.getElementById("editName")?.value || "Player";
-  const pos = document.getElementById("editPos")?.value || "Universal";
+  const pos = document.getElementById("editPos")?.value || "OH";
   const jersey = document.getElementById("editJersey")?.value || "0";
+  const textColor = document.getElementById("editTextColor")?.value || "#220e02";
 
   const photoFile = document.getElementById("editPhoto")?.files[0];
   const customFrameFile = document.getElementById("editCustomCardFrame")?.files[0];
   let directCardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || "";
 
-  let photoUrl = tempPhotoBase64 || "";
-  let cardFrameUrl = directCardUrl || tempPlayerCardFrameBase64 || "";
+  // 1. Preserve Photo URL
+  let photoUrl = "";
+  if (photoFile) {
+    photoUrl = await convertFileToBase64(photoFile);
+  } else if (tempPhotoBase64) {
+    photoUrl = tempPhotoBase64;
+  } else if (currentEditingPlayer && !isPhotoRemoved) {
+    photoUrl = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
+  }
 
-  if (photoFile && !photoUrl) photoUrl = await convertFileToBase64(photoFile);
-  if (customFrameFile && !cardFrameUrl) cardFrameUrl = await convertFileToBase64(customFrameFile);
+  if (isPhotoRemoved) photoUrl = "";
 
-  // Check manual removals
-  if (typeof isPhotoRemoved !== 'undefined' && isPhotoRemoved) photoUrl = "";
-  if (typeof isCardFrameRemoved !== 'undefined' && isCardFrameRemoved) cardFrameUrl = "";
+  // 2. Preserve Card Frame / Animated GIF URL
+  let cardFrameUrl = "";
+  if (customFrameFile) {
+    cardFrameUrl = await convertFileToBase64(customFrameFile);
+  } else if (directCardUrl) {
+    cardFrameUrl = directCardUrl;
+  } else if (tempPlayerCardFrameBase64) {
+    cardFrameUrl = tempPlayerCardFrameBase64;
+  } else if (currentEditingPlayer && !isCardFrameRemoved) {
+    cardFrameUrl = currentEditingPlayer.cardFrameUrl || "";
+  }
+
+  if (isCardFrameRemoved) cardFrameUrl = "";
 
   const stats = {
     atk: parseInt(document.getElementById("statAtk")?.value || 70),
@@ -666,19 +551,33 @@ window.handleSavePlayer = async function(e) {
 
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
-  try {
-    await db.collection("players").doc(editId).set({
-      name, pos, jersey, stats, ovr,
-      photoUrl, cardFrameUrl,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+  const playerData = {
+    id: editId,
+    name, pos, jersey, stats, ovr,
+    photoUrl, cardFrameUrl, textColor,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
 
-    if (typeof saveAll === "function") saveAll();
+  try {
+    await db.collection("players").doc(editId).set(playerData, { merge: true });
+
+    // Instantly update global JS array
+    const idx = players.findIndex(p => p.id === editId);
+    if (idx >= 0) {
+      players[idx] = { ...players[idx], ...playerData };
+    } else {
+      players.push(playerData);
+      selectedPlayerIds.add(editId);
+    }
+
     closePlayerModal();
+    renderRoster();
   } catch (err) {
     alert("Failed to save player: " + err.message);
   }
 };
+
+
 
 window.handleDeletePlayer = function() {
   if (!isAdmin) {
@@ -720,6 +619,7 @@ renderDashboard();
 // LIVE ANIMATED GIF CARD RENDERER (CSS OVERLAY)
 // LIVE ANIMATED GIF CARD RENDERER (PURE OVERLAY)
 // 1. LISTEN TO FIRESTORE & SYNC GLOBAL PLAYERS ARRAY
+// LISTEN TO FIRESTORE & KEEP GLOBAL ARRAY IN SYNC
 function listenToPlayerRoster() {
   if (!window.firebase || !firebase.firestore) {
     renderRoster();
@@ -728,7 +628,6 @@ function listenToPlayerRoster() {
 
   db.collection("players").onSnapshot(snapshot => {
     if (snapshot && !snapshot.empty) {
-      // Sync Firestore data into the global players array
       players = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -736,22 +635,12 @@ function listenToPlayerRoster() {
     }
     renderRoster();
   }, err => {
-    console.error("Roster snapshot error:", err);
+    console.error("Roster error:", err);
     renderRoster();
   });
 }
 
-// 2. TOGGLE CARD SELECTION
-function toggleSelect(id) {
-  if (selectedPlayerIds.has(id)) {
-    selectedPlayerIds.delete(id);
-  } else {
-    selectedPlayerIds.add(id);
-  }
-  renderRoster(); // Re-renders cleanly from updated `players`
-}
-
-// 3. RENDER ROSTER FROM GLOBAL `players` ARRAY
+// RENDER ROSTER (PURE CSS OVERLAY FOR ANIMATED GIFS & LIVE TEXT)
 function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
@@ -766,7 +655,7 @@ function renderRoster() {
     const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
 
     // Card Layers
-    const bgGif = p.cardFrameUrl || p.cardImageUrl || 'assets/frames/gold.png';
+    const bgGif = p.cardFrameUrl || 'assets/frames/gold.png';
     const photo = p.photoUrl || p.photo || '';
     const textColor = p.textColor || '#220e02';
     const name = (p.name || 'PLAYER').toUpperCase();
@@ -780,7 +669,7 @@ function renderRoster() {
         
         <div style="position: relative; width: 220px; height: 330px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));">
           
-          <!-- LAYER 1: RAW BLANK CARD FRAME / ANIMATED GIF -->
+          <!-- LAYER 1: ANIMATED GIF / BLANK FRAME -->
           <img src="${bgGif}" alt="Card Frame" 
                style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;"
                onerror="this.onerror=null; this.src='assets/frames/gold.png';">
@@ -828,7 +717,6 @@ function renderRoster() {
     selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
   }
 }
-
 document.addEventListener("DOMContentLoaded", listenToPlayerRoster);
 
 function generatePlayerCardImage(p) {

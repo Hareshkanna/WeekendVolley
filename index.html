@@ -200,36 +200,95 @@
     </div>
   </div>
 
-  <!-- PLAYER EDIT MODAL -->
-  <div class="modal" id="playerModal">
-    <div class="modal-body">
-      <div class="panel-title">
-        <span id="modalTitle">Edit Player</span>
-        <button onclick="closePlayerModal()" class="close-btn">&times;</button>
+<!-- PLAYER MODAL -->
+<div id="playerModal" class="modal">
+  <div class="modal-content" style="max-width: 500px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155;">
+    <span class="close" onclick="closePlayerModal()" style="float: right; cursor: pointer; font-size: 1.5rem;">&times;</span>
+    <h3 id="modalTitle" style="color: #fbbf24; margin-bottom: 15px;">Edit Player Card</h3>
+
+    <form id="playerForm" onsubmit="handleSavePlayer(event)">
+      <input type="hidden" id="editId">
+
+      <!-- BASIC INFO -->
+      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <label class="input-lbl">Player Name</label>
+          <input type="text" id="editName" required placeholder="Player Name">
+        </div>
+        <div>
+          <label class="input-lbl">Position</label>
+          <input type="text" id="editPos" placeholder="OH / SET / LIB / OPP">
+        </div>
       </div>
 
-      <form id="playerForm" onsubmit="handleSavePlayer(event)">
-        <input type="hidden" id="editId">
-        
-        <label class="input-lbl">Name</label>
-        <input type="text" id="editName" required>
+      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div>
+          <label class="input-lbl">Jersey Number</label>
+          <input type="number" id="editJersey" value="0">
+        </div>
+        <div>
+          <label class="input-lbl">Card Text Color</label>
+          <input type="color" id="editTextColor" value="#220e02" style="height:38px; padding:2px; width:100%; cursor:pointer; background:#1e293b; border:1px solid #334155; border-radius:6px;">
+        </div>
+      </div>
 
-        <div class="form-row">
+      <!-- UPLOAD SECTION -->
+      <div class="mt-sm" style="margin-top: 12px;">
+        <label class="input-lbl">Upload Cutout Photo (PNG/GIF)</label>
+        <input type="file" id="editPhoto" accept="image/*">
+        <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedPhoto()" style="margin-top: 4px; padding: 3px 8px; font-size: 0.75rem;">🗑️ Remove Photo</button>
+      </div>
+
+      <div class="mt-sm" style="margin-top: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
+        <label class="input-lbl" style="font-weight: bold; color: #fbbf24;">Upload Card Template / Animated GIF</label>
+        <input type="file" id="editCustomCardFrame" accept="image/*" style="margin-bottom: 6px;">
+        
+        <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct GIF/PNG Image URL:</span>
+        <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.gif" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-bottom: 6px;">
+        
+        <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedCardDesign()" style="padding: 3px 8px; font-size: 0.75rem;">🗑️ Clear Card Template</button>
+      </div>
+
+      <!-- STATS SLIDERS -->
+      <div class="stats-section mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+        <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Volleyball Stats</span>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
-            <label class="input-lbl">Position</label>
-            <select id="editPos">
-              <option value="Attacker">Attacker</option>
-              <option value="Setter">Setter</option>
-              <option value="Blocker">Blocker</option>
-              <option value="Libero">Libero</option>
-              <option value="Universal">Universal</option>
-            </select>
+            <label class="input-lbl">ATK: <span id="lblAtk">70</span></label>
+            <input type="range" id="statAtk" min="1" max="99" value="70" oninput="updateSliderLbl('Atk')">
           </div>
           <div>
-            <label class="input-lbl">Jersey #</label>
-            <input type="number" id="editJersey" min="0" max="99">
+            <label class="input-lbl">RCV: <span id="lblRcv">70</span></label>
+            <input type="range" id="statRcv" min="1" max="99" value="70" oninput="updateSliderLbl('Rcv')">
+          </div>
+          <div>
+            <label class="input-lbl">BLK: <span id="lblBlk">70</span></label>
+            <input type="range" id="statBlk" min="1" max="99" value="70" oninput="updateSliderLbl('Blk')">
+          </div>
+          <div>
+            <label class="input-lbl">STM: <span id="lblStm">70</span></label>
+            <input type="range" id="statStm" min="1" max="99" value="70" oninput="updateSliderLbl('Stm')">
+          </div>
+          <div>
+            <label class="input-lbl">SRV: <span id="lblSrv">70</span></label>
+            <input type="range" id="statSrv" min="1" max="99" value="70" oninput="updateSliderLbl('Srv')">
+          </div>
+          <div>
+            <label class="input-lbl">TMW: <span id="lblTmw">70</span></label>
+            <input type="range" id="statTmw" min="1" max="99" value="70" oninput="updateSliderLbl('Tmw')">
           </div>
         </div>
+      </div>
+
+      <!-- SINGLE SAVE BUTTON -->
+      <div class="modal-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-sec" onclick="handleDeletePlayer()" style="background: #dc2626; color: #fff;">Delete</button>
+        <button type="submit" class="btn btn-primary" style="background: #fbbf24; color: #000; font-weight: bold; padding: 8px 16px;">Save Card</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 
         <!-- UPDATED IMAGE & CARD UPLOAD SECTION -->
