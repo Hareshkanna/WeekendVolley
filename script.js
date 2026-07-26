@@ -20,9 +20,7 @@ auth.onAuthStateChanged((user) => {
     if (logoutBtn) logoutBtn.style.display = "none";
   }
   
-  renderRoster();
-  renderMatchTab();
-  renderDashboard();
+  renderAllViews();
 });
 
 window.openLoginModal = function() {
@@ -73,15 +71,26 @@ let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
 
-function saveAll() {
+// REFRESH ALL UI TAB VIEWS
+function renderAllViews() {
+  renderRoster();
+  renderMatchTab();
+  renderDashboard();
+  renderHistory();
+  applySettings();
+}
+
+// SAVE MATCH HISTORY & SETTINGS TO FIREBASE + LOCALSTORAGE
+function saveAllAppData() {
   localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
   localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
 
   if (!window.db) return;
   db.collection("appData").doc("roster").set({
     matchHistory: matchHistory,
-    appSettings: appSettings
-  }).catch((err) => console.error("Cloud AppData Save Error: ", err));
+    appSettings: appSettings,
+    updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+  }, { merge: true }).catch((err) => console.error("Cloud AppData Save Error: ", err));
 }
 
 function calcOVR(stats) {
@@ -135,7 +144,7 @@ window.handleBgFileUpload = function(e) {
     const reader = new FileReader();
     reader.onloadend = () => {
       appSettings.bgCustomPhoto = reader.result;
-      saveAll();
+      saveAllAppData();
       applySettings();
     };
     reader.readAsDataURL(file);
@@ -145,13 +154,13 @@ window.handleBgFileUpload = function(e) {
 window.applyBgPreset = function(val) {
   appSettings.bgPreset = val;
   appSettings.bgCustomPhoto = '';
-  saveAll();
+  saveAllAppData();
   applySettings();
 };
 
 window.updateAppAccent = function(color) {
   appSettings.accentColor = color;
-  saveAll();
+  saveAllAppData();
   applySettings();
 };
 
@@ -161,7 +170,7 @@ window.handleGlobalCardDesignUpload = function(e) {
     const reader = new FileReader();
     reader.onloadend = () => {
       appSettings.globalCardDesignImg = reader.result;
-      saveAll();
+      saveAllAppData();
       renderRoster();
       renderMatchTab();
     };
@@ -171,7 +180,7 @@ window.handleGlobalCardDesignUpload = function(e) {
 
 window.clearGlobalCardDesign = function() {
   appSettings.globalCardDesignImg = '';
-  saveAll();
+  saveAllAppData();
   renderRoster();
   renderMatchTab();
 };
@@ -195,14 +204,11 @@ window.importDataBackup = function(e) {
   reader.onload = function(event) {
     try {
       const parsed = JSON.parse(event.target.result);
-      if (parsed.players) players = parsed.parsed;
+      if (parsed.players) players = parsed.players;
       if (parsed.matchHistory) matchHistory = parsed.matchHistory;
       if (parsed.appSettings) appSettings = parsed.appSettings;
-      saveAll();
-      applySettings();
-      renderRoster();
-      renderMatchTab();
-      renderHistory();
+      saveAllAppData();
+      renderAllViews();
       alert('Backup restored successfully!');
     } catch (err) {
       alert('Invalid backup JSON file.');
@@ -316,7 +322,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// SAVE PLAYER (OPTIMISTIC IMMEDIATE RENDER)
+// SAVE PLAYER (INSTANT + FIREBASE REAL-TIME SYNC)
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -370,7 +376,7 @@ window.handleSavePlayer = async function(e) {
     updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
   };
 
-  // 1. Instantly update local array
+  // 1. Instantly update local array & UI
   const idx = players.findIndex(p => String(p.id) === String(editId));
   if (idx >= 0) {
     players[idx] = { ...players[idx], ...playerData };
@@ -379,13 +385,10 @@ window.handleSavePlayer = async function(e) {
   }
   selectedPlayerIds.add(String(editId));
 
-  // 2. Immediately update screen UI & close modal
   closePlayerModal();
-  renderRoster();
-  renderMatchTab();
-  renderDashboard();
+  renderAllViews();
 
-  // 3. Sync to Firestore in background
+  // 2. Sync to Firestore (Pushes update live to all other devices)
   if (window.db) {
     db.collection("players").doc(String(editId)).set(playerData, { merge: true })
       .catch(err => {
@@ -409,9 +412,7 @@ window.handleDeletePlayer = function() {
     selectedPlayerIds.delete(String(editId));
 
     closePlayerModal();
-    renderRoster();
-    renderMatchTab();
-    renderDashboard();
+    renderAllViews();
 
     if (window.db) {
       db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
@@ -440,15 +441,14 @@ window.handleBatchAdd = function() {
   });
 
   document.getElementById('batchNames').value = '';
-  renderRoster();
-  renderMatchTab();
-  renderDashboard();
+  renderAllViews();
 };
 
-// LISTEN TO FIRESTORE ROSTER
-function listenToPlayerRoster() {
+// LIVE LISTENERS FOR ALL FIREBASE DATA (PLAYERS & MATCH HISTORY)
+function listenToCloudData() {
   if (!window.firebase || !firebase.firestore || !window.db) return;
 
+  // 1. LIVE PLAYER ROSTER LISTENER
   db.collection("players").onSnapshot(snapshot => {
     if (snapshot && !snapshot.empty) {
       players = snapshot.docs.map(doc => ({
@@ -461,9 +461,25 @@ function listenToPlayerRoster() {
     renderRoster();
     renderMatchTab();
     renderDashboard();
-  }, err => {
-    console.error("Roster snapshot error:", err);
-  });
+  }, err => console.error("Roster snapshot error:", err));
+
+  // 2. LIVE MATCH HISTORY & SETTINGS LISTENER
+  db.collection("appData").doc("roster").onSnapshot(doc => {
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.matchHistory) {
+        matchHistory = data.matchHistory;
+        localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
+      }
+      if (data.appSettings) {
+        appSettings = data.appSettings;
+        localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
+      }
+      renderHistory();
+      renderDashboard();
+      applySettings();
+    }
+  }, err => console.error("AppData snapshot error:", err));
 }
 
 // CARD BUILDER TEMPLATE
@@ -637,6 +653,7 @@ window.generateMatch = function(balanced) {
   }
 };
 
+// SAVE MATCH RESULT (FIREBASE SYNC)
 window.saveMatchResult = function() {
   if (!currentMatchData) return;
 
@@ -664,8 +681,9 @@ window.saveMatchResult = function() {
   };
 
   matchHistory.unshift(record);
-  saveAll();
-  alert('Match saved successfully!');
+  saveAllAppData();
+  alert('Match logged and saved to cloud!');
+  
   const panel = document.getElementById('generatedMatchPanel');
   if (panel) panel.style.display = 'none';
 };
@@ -705,7 +723,7 @@ function convertFileToBase64(file) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  listenToPlayerRoster();
+  listenToCloudData();
   applySettings();
   renderDashboard();
 });
