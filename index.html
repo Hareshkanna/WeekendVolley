@@ -200,221 +200,95 @@
     </div>
   </div>
 
-<!-- PLAYER MODAL -->
-<div id="playerModal" class="modal">
-  <div class="modal-content" style="max-width: 500px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155;">
-    <span class="close" onclick="closePlayerModal()" style="float: right; cursor: pointer; font-size: 1.5rem;">&times;</span>
-    <h3 id="modalTitle" style="color: #fbbf24; margin-bottom: 15px;">Edit Player Card</h3>
+  <!-- PLAYER EDIT MODAL (CLEAN & SINGLE) -->
+  <div id="playerModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width: 500px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155;">
+      <span class="close" onclick="closePlayerModal()" style="float: right; cursor: pointer; font-size: 1.5rem;">&times;</span>
+      <h3 id="modalTitle" style="color: #fbbf24; margin-bottom: 15px;">Edit Player Card</h3>
 
-    <form id="playerForm" onsubmit="handleSavePlayer(event)">
-      <input type="hidden" id="editId">
+      <form id="playerForm" onsubmit="handleSavePlayer(event)">
+        <input type="hidden" id="editId">
 
-      <!-- BASIC INFO -->
-      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <div>
-          <label class="input-lbl">Player Name</label>
-          <input type="text" id="editName" required placeholder="Player Name">
-        </div>
-        <div>
-          <label class="input-lbl">Position</label>
-          <input type="text" id="editPos" placeholder="OH / SET / LIB / OPP">
-        </div>
-      </div>
-
-      <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-        <div>
-          <label class="input-lbl">Jersey Number</label>
-          <input type="number" id="editJersey" value="0">
-        </div>
-        <div>
-          <label class="input-lbl">Card Text Color</label>
-          <input type="color" id="editTextColor" value="#220e02" style="height:38px; padding:2px; width:100%; cursor:pointer; background:#1e293b; border:1px solid #334155; border-radius:6px;">
-        </div>
-      </div>
-
-      <!-- UPLOAD SECTION -->
-      <div class="mt-sm" style="margin-top: 12px;">
-        <label class="input-lbl">Upload Cutout Photo (PNG/GIF)</label>
-        <input type="file" id="editPhoto" accept="image/*">
-        <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedPhoto()" style="margin-top: 4px; padding: 3px 8px; font-size: 0.75rem;">🗑️ Remove Photo</button>
-      </div>
-
-      <div class="mt-sm" style="margin-top: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
-        <label class="input-lbl" style="font-weight: bold; color: #fbbf24;">Upload Card Template / Animated GIF</label>
-        <input type="file" id="editCustomCardFrame" accept="image/*" style="margin-bottom: 6px;">
-        
-        <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct GIF/PNG Image URL:</span>
-        <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.gif" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-bottom: 6px;">
-        
-        <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedCardDesign()" style="padding: 3px 8px; font-size: 0.75rem;">🗑️ Clear Card Template</button>
-      </div>
-
-      <!-- STATS SLIDERS -->
-      <div class="stats-section mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
-        <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Volleyball Stats</span>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <!-- BASIC INFO -->
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
-            <label class="input-lbl">ATK: <span id="lblAtk">70</span></label>
-            <input type="range" id="statAtk" min="1" max="99" value="70" oninput="updateSliderLbl('Atk')">
+            <label class="input-lbl">Player Name</label>
+            <input type="text" id="editName" required placeholder="Player Name">
           </div>
           <div>
-            <label class="input-lbl">RCV: <span id="lblRcv">70</span></label>
-            <input type="range" id="statRcv" min="1" max="99" value="70" oninput="updateSliderLbl('Rcv')">
-          </div>
-          <div>
-            <label class="input-lbl">BLK: <span id="lblBlk">70</span></label>
-            <input type="range" id="statBlk" min="1" max="99" value="70" oninput="updateSliderLbl('Blk')">
-          </div>
-          <div>
-            <label class="input-lbl">STM: <span id="lblStm">70</span></label>
-            <input type="range" id="statStm" min="1" max="99" value="70" oninput="updateSliderLbl('Stm')">
-          </div>
-          <div>
-            <label class="input-lbl">SRV: <span id="lblSrv">70</span></label>
-            <input type="range" id="statSrv" min="1" max="99" value="70" oninput="updateSliderLbl('Srv')">
-          </div>
-          <div>
-            <label class="input-lbl">TMW: <span id="lblTmw">70</span></label>
-            <input type="range" id="statTmw" min="1" max="99" value="70" oninput="updateSliderLbl('Tmw')">
+            <label class="input-lbl">Position</label>
+            <input type="text" id="editPos" placeholder="OH / SET / LIB / OPP">
           </div>
         </div>
-      </div>
 
-      <!-- SINGLE SAVE BUTTON -->
-      <div class="modal-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
-        <button type="button" class="btn btn-sec" onclick="handleDeletePlayer()" style="background: #dc2626; color: #fff;">Delete</button>
-        <button type="submit" class="btn btn-primary" style="background: #fbbf24; color: #000; font-weight: bold; padding: 8px 16px;">Save Card</button>
-      </div>
-    </form>
-  </div>
-</div>
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+          <div>
+            <label class="input-lbl">Jersey Number</label>
+            <input type="number" id="editJersey" value="0">
+          </div>
+          <div>
+            <label class="input-lbl">Card Text Color</label>
+            <input type="color" id="editTextColor" value="#220e02" style="height:38px; padding:2px; width:100%; cursor:pointer; background:#1e293b; border:1px solid #334155; border-radius:6px;">
+          </div>
+        </div>
 
-
-        <!-- UPDATED IMAGE & CARD UPLOAD SECTION -->
-        <div class="mt-sm">
-          <label class="input-lbl">Upload Player Photo Cutout</label>
+        <!-- UPLOAD SECTION -->
+        <div class="mt-sm" style="margin-top: 12px;">
+          <label class="input-lbl">Upload Cutout Photo (PNG/GIF)</label>
           <input type="file" id="editPhoto" accept="image/*">
-          <button type="button" class="btn btn-sm btn-sec" onclick="removeUploadedPhoto()" style="margin-top: 6px; padding: 4px 10px; font-size: 0.75rem;">🗑️ Remove Photo</button>
+          <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedPhoto()" style="margin-top: 4px; padding: 3px 8px; font-size: 0.75rem;">🗑️ Remove Photo</button>
         </div>
 
-        <div class="mt-sm" style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
-          <label class="input-lbl" style="font-weight: bold; color: #fbbf24;">Upload Custom FIFA Card Graphic (PNG/JPG)</label>
+        <div class="mt-sm" style="margin-top: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
+          <label class="input-lbl" style="font-weight: bold; color: #fbbf24;">Upload Card Template / Animated GIF</label>
           <input type="file" id="editCustomCardFrame" accept="image/*" style="margin-bottom: 6px;">
           
-          <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct card Image URL / Base64 string:</span>
-          <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.png" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-bottom: 6px;">
+          <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct GIF/PNG Image URL:</span>
+          <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.gif" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-bottom: 6px;">
           
-          <button type="button" class="btn btn-sm btn-sec" onclick="removeUploadedCardDesign()" style="padding: 4px 10px; font-size: 0.75rem;">🗑️ Clear Custom Card Graphic</button>
+          <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedCardDesign()" style="padding: 3px 8px; font-size: 0.75rem;">🗑️ Clear Card Template</button>
         </div>
 
-        <!-- INDIVIDUAL CARD THEME SELECTOR -->
-        <div class="stats-section">
-          <span class="stats-header">Card Style Preset</span>
-          <div class="form-row mt-sm">
-            <div>
-              <label class="input-lbl">Color Preset (Used if no custom image)</label>
-              <select id="editCardTheme" onchange="toggleCustomColorInputs(this.value)">
-                <option value="gold">Gold Legend</option>
-                <option value="emerald">Emerald Icon</option>
-                <option value="crimson">Crimson Fire</option>
-                <option value="obsidian">Obsidian Dark</option>
-                <option value="cyan">Cyan Electric</option>
-                <option value="custom">Custom Color Picker</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-row mt-sm" id="customCardColorsRow" style="display:none;">
-            <div>
-              <label class="input-lbl">Card Main Color</label>
-              <input type="color" id="editCardColor" value="#f59e0b" style="height:38px; padding:0;">
-            </div>
-            <div>
-              <label class="input-lbl">Border Color</label>
-              <input type="color" id="editCardBorder" value="#fef08a" style="height:38px; padding:0;">
-            </div>
-          </div>
-        </div>
-
-        <!-- STAT SLIDERS -->
-        <div class="stats-section">
-          <span class="stats-header">Stats (1-99)</span>
-          
-          <div class="slider-group">
-            <label><span>Attack</span><span id="lblAtk">70</span></label>
-            <input type="range" id="statAtk" min="1" max="99" value="70" oninput="updateSliderLbl('Atk')">
-          </div>
-          <div class="slider-group">
-            <label><span>Serve</span><span id="lblSrv">70</span></label>
-            <input type="range" id="statSrv" min="1" max="99" value="70" oninput="updateSliderLbl('Srv')">
-          </div>
-          <div class="slider-group">
-            <label><span>Receive</span><span id="lblRcv">70</span></label>
-            <input type="range" id="statRcv" min="1" max="99" value="70" oninput="updateSliderLbl('Rcv')">
-          </div>
-          <div class="slider-group">
-            <label><span>Block</span><span id="lblBlk">70</span></label>
-            <input type="range" id="statBlk" min="1" max="99" value="70" oninput="updateSliderLbl('Blk')">
-          </div>
-          <div class="slider-group">
-            <label><span>Stamina</span><span id="lblStm">70</span></label>
-            <input type="range" id="statStm" min="1" max="99" value="70" oninput="updateSliderLbl('Stm')">
-          </div>
-          <div class="slider-group">
-            <label><span>Teamwork</span><span id="lblTmw">70</span></label>
-            <input type="range" id="statTmw" min="1" max="99" value="70" oninput="updateSliderLbl('Tmw')">
-          </div>
-        </div>
-
-        <div class="modal-actions">
-          <button type="button" class="btn btn-sec btn-delete" id="btnDeletePlayer" onclick="handleDeletePlayer()">Delete</button>
-          <!-- PASTE THE SLIDERS HERE (DIRECTLY ABOVE THE SUBMIT BUTTON) -->
-        <div class="stats-section mt-sm" style="background: rgba(0,0,0,0.25); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); margin-top: 10px;">
-          <span style="color: #fbbf24; font-weight: bold; display: block; margin-bottom: 8px; font-size: 0.85rem;">🎯 Fine-Tune Card Alignment</span>
+        <!-- STATS SLIDERS -->
+        <div class="stats-section mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Volleyball Stats</span>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div>
-              <label class="input-lbl" style="font-size: 0.75rem;">Text Color</label>
-              <input type="color" id="editTextColor" value="#220e02" style="height:32px; padding:0; width:100%; cursor:pointer; border-radius: 4px; border: none;">
+              <label class="input-lbl">ATK: <span id="lblAtk">70</span></label>
+              <input type="range" id="statAtk" min="1" max="99" value="70" oninput="document.getElementById('lblAtk').innerText = this.value">
             </div>
             <div>
-              <label class="input-lbl" style="font-size: 0.75rem;">Photo Scale: <span id="lblPhotoScale">100%</span></label>
-              <input type="range" id="adjPhotoScale" min="50" max="150" value="100" style="width: 100%;" oninput="document.getElementById('lblPhotoScale').innerText = this.value + '%'">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-            <div>
-              <label class="input-lbl" style="font-size: 0.75rem;">Photo Shift X (Left/Right)</label>
-              <input type="range" id="adjPhotoX" min="-100" max="100" value="0" style="width: 100%;">
+              <label class="input-lbl">RCV: <span id="lblRcv">70</span></label>
+              <input type="range" id="statRcv" min="1" max="99" value="70" oninput="document.getElementById('lblRcv').innerText = this.value">
             </div>
             <div>
-              <label class="input-lbl" style="font-size: 0.75rem;">Photo Shift Y (Up/Down)</label>
-              <input type="range" id="adjPhotoY" min="-100" max="100" value="0" style="width: 100%;">
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px;">
-            <div>
-              <label class="input-lbl" style="font-size: 0.75rem;">Name Shift Y</label>
-              <input type="range" id="adjNameY" min="-50" max="50" value="0" style="width: 100%;">
+              <label class="input-lbl">BLK: <span id="lblBlk">70</span></label>
+              <input type="range" id="statBlk" min="1" max="99" value="70" oninput="document.getElementById('lblBlk').innerText = this.value">
             </div>
             <div>
-              <label class="input-lbl" style="font-size: 0.75rem;">Stats Shift Y</label>
-              <input type="range" id="adjStatsY" min="-50" max="50" value="0" style="width: 100%;">
+              <label class="input-lbl">STM: <span id="lblStm">70</span></label>
+              <input type="range" id="statStm" min="1" max="99" value="70" oninput="document.getElementById('lblStm').innerText = this.value">
+            </div>
+            <div>
+              <label class="input-lbl">SRV: <span id="lblSrv">70</span></label>
+              <input type="range" id="statSrv" min="1" max="99" value="70" oninput="document.getElementById('lblSrv').innerText = this.value">
+            </div>
+            <div>
+              <label class="input-lbl">TMW: <span id="lblTmw">70</span></label>
+              <input type="range" id="statTmw" min="1" max="99" value="70" oninput="document.getElementById('lblTmw').innerText = this.value">
             </div>
           </div>
         </div>
 
-        <!-- THIS IS YOUR EXISTING SUBMIT BUTTON -->
-        <button type="submit" class="btn btn-primary">Save Player</button>
-          <button type="submit" class="btn btn-primary">Save Card</button>
+        <!-- MODAL ACTIONS (SINGLE SAVE BUTTON) -->
+        <div class="modal-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-sec" onclick="handleDeletePlayer()" style="background: #dc2626; color: #fff;">Delete</button>
+          <button type="submit" class="btn btn-primary" style="background: #fbbf24; color: #000; font-weight: bold; padding: 8px 16px;">Save Card</button>
         </div>
       </form>
     </div>
   </div>
-
 
   <!-- LOGIN MODAL -->
   <div class="modal" id="loginModal" style="display:none;">

@@ -28,18 +28,13 @@ auth.onAuthStateChanged((user) => {
 
 window.openLoginModal = function() {
   const modal = document.getElementById("loginModal");
-  if (modal) {
-    modal.style.display = "flex";
-  } else {
-    alert("Modal element #loginModal not found in HTML!");
-  }
+  if (modal) modal.style.display = "flex";
+  else alert("Modal element #loginModal not found in HTML!");
 };
 
 window.closeLoginModal = function() {
   const modal = document.getElementById("loginModal");
-  if (modal) {
-    modal.style.display = "none";
-  }
+  if (modal) modal.style.display = "none";
 };
 
 function handleLogin(e) {
@@ -48,9 +43,7 @@ function handleLogin(e) {
   const pass = document.getElementById("loginPassword").value;
 
   auth.signInWithEmailAndPassword(email, pass)
-    .then(() => {
-      closeLoginModal();
-    })
+    .then(() => closeLoginModal())
     .catch((error) => {
       document.getElementById("loginError").innerText = error.message;
     });
@@ -70,7 +63,7 @@ const CARD_PRESETS = {
   cyan: { gradient: 'linear-gradient(180deg, #67e8f9 0%, #0891b2 55%, #164e63 100%)', text: '#041f2c' }
 };
 
-// LOCAL STORAGE INITIALIZATION
+// GLOBAL APP STATE
 let players = JSON.parse(localStorage.getItem('vb_hub_players')) || [
   { id: '1', name: 'Alex Cruz', pos: 'Attacker', jersey: 7, photo: DEFAULT_AVATAR, stats: { atk:85, srv:78, rcv:70, blk:72, stm:80, tmw:82 }, ovr: 78, mvps: 2, cardTheme: 'gold' },
   { id: '2', name: 'Sam Taylor', pos: 'Setter', jersey: 12, photo: DEFAULT_AVATAR, stats: { atk:60, srv:82, rcv:88, blk:65, stm:78, tmw:92 }, ovr: 78, mvps: 1, cardTheme: 'emerald' }
@@ -89,7 +82,13 @@ let currentMatchData = null;
 let tempPhotoBase64 = null;
 let tempPlayerCardFrameBase64 = null;
 
+// EDITING & REMOVAL TRACKERS
+let currentEditingPlayer = null;
+let isPhotoRemoved = false;
+let isCardFrameRemoved = false;
+
 function saveAll() {
+  if (!window.db) return;
   db.collection("appData").doc("roster").set({
     players: players,
     matchHistory: matchHistory,
@@ -106,7 +105,7 @@ function calcOVR(stats) {
   return Math.min(99, Math.max(1, Math.round(sum)));
 }
 
-// THEME & CUSTOM CARD DESIGN UPLOAD
+// THEME SETTINGS
 const BACKGROUND_PRESETS = {
   midnight: '#0b0f19',
   stadium: 'radial-gradient(circle at center, #1e3a8a 0%, #090d16 100%)',
@@ -128,52 +127,7 @@ function applySettings() {
   if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor;
 }
 
-function handleGlobalCardDesignUpload(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      appSettings.globalCardDesignImg = reader.result;
-      saveAll();
-      renderRoster();
-    };
-    reader.readAsDataURL(file);
-  }
-}
-
-function clearGlobalCardDesign() {
-  appSettings.globalCardDesignImg = '';
-  saveAll();
-  renderRoster();
-}
-
-function handleBgFileUpload(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      appSettings.bgCustomPhoto = reader.result;
-      saveAll();
-      applySettings();
-    };
-    reader.readAsDataURL(file);
-  }
-}
-
-function applyBgPreset(val) {
-  appSettings.bgPreset = val;
-  appSettings.bgCustomPhoto = '';
-  saveAll();
-  applySettings();
-}
-
-function updateAppAccent(color) {
-  appSettings.accentColor = color;
-  saveAll();
-  applySettings();
-}
-
-// BACKUP / EXPORT SYSTEM
+// BACKUP & EXPORT
 function exportDataBackup() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
   const downloadAnchor = document.createElement('a');
@@ -206,15 +160,14 @@ function importDataBackup(e) {
   reader.readAsText(file);
 }
 
-// NAVIGATION SYSTEM
+// NAVIGATION
 function switchTab(tabId, event) {
   document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   
-  document.getElementById(tabId).classList.add('active');
-  if (event && event.currentTarget) {
-    event.currentTarget.classList.add('active');
-  }
+  const targetTab = document.getElementById(tabId);
+  if (targetTab) targetTab.classList.add('active');
+  if (event && event.currentTarget) event.currentTarget.classList.add('active');
 
   if (tabId === 'dashboardTab') renderDashboard();
   if (tabId === 'playersTab') renderRoster();
@@ -224,207 +177,40 @@ function switchTab(tabId, event) {
 
 // DASHBOARD RENDERER
 function renderDashboard() {
-  document.getElementById('dashTotalPlayers').innerText = players.length;
-  document.getElementById('dashTotalMatches').innerText = matchHistory.length;
+  if (document.getElementById('dashTotalPlayers')) document.getElementById('dashTotalPlayers').innerText = players.length;
+  if (document.getElementById('dashTotalMatches')) document.getElementById('dashTotalMatches').innerText = matchHistory.length;
 
   const sortedByMVP = [...players].sort((a,b) => (b.mvps || 0) - (a.mvps || 0));
   const topMVP = sortedByMVP[0] && (sortedByMVP[0].mvps || 0) > 0 ? `${sortedByMVP[0].name} (${sortedByMVP[0].mvps})` : 'None';
-  document.getElementById('dashTopMVP').innerText = topMVP;
+  if (document.getElementById('dashTopMVP')) document.getElementById('dashTopMVP').innerText = topMVP;
 
   const topOvr = [...players].sort((a,b) => b.ovr - a.ovr).slice(0, 5);
-  document.getElementById('topPlayersList').innerHTML = topOvr.map(p => `
-    <div class="list-row">
-      <span>${p.name} (${p.pos})</span>
-      <span style="font-weight:bold; color:var(--accent-color);">${p.ovr} OVR</span>
-    </div>
-  `).join('');
-
-  document.getElementById('mvpLeaderboardList').innerHTML = sortedByMVP.map(p => `
-    <div class="list-row">
-      <span>${p.name}</span>
-      <span style="font-weight:bold; color:var(--accent-color);">${p.mvps || 0} MVPs</span>
-    </div>
-  `).join('');
-}
-
-// ROSTER & CARDS RENDERER
-function getPlayerCardStyle(player) {
-  if (player.cardTheme === 'custom' && player.cardCustomColor) {
-    return {
-      gradient: `linear-gradient(180deg, ${player.cardCustomBorder || '#fef08a'} 0%, ${player.cardCustomColor} 100%)`,
-      text: '#ffffff'
-    };
-  }
-  return CARD_PRESETS[player.cardTheme] || CARD_PRESETS.gold;
-}
-
-function renderRoster() {
-  const grid = document.getElementById('rosterGrid');
-  if (!grid) return;
-
-  grid.innerHTML = players.map(p => {
-    const isSel = selectedPlayerIds.has(p.id);
-    const cardImgPath = p.cardImageUrl || p.generatedCardUrl || `cards/${p.id}.png`;
-
-    return `
-      <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${p.id}')">
-        <div class="fifa-card-shield" style="background: transparent;">
-          <img src="${cardImgPath}" 
-               onerror="this.onerror=null; this.src='assets/frames/gold.png';" 
-               alt="${p.name} Card" 
-               style="width: 100%; height: 100%; object-fit: contain;">
-
-          ${isAdmin ? `
-            <div class="fut-card-actions" style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center;">
-              <button onclick="event.stopPropagation(); openPlayerModal('${p.id}')" class="btn btn-sec btn-sm">Edit Card</button>
-            </div>
-          ` : ''}
-        </div>
+  const topList = document.getElementById('topPlayersList');
+  if (topList) {
+    topList.innerHTML = topOvr.map(p => `
+      <div class="list-row">
+        <span>${p.name} (${p.pos})</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${p.ovr} OVR</span>
       </div>
-    `;
-  }).join('');
-
-  const selectedCountEl = document.getElementById('selectedCount');
-  if (selectedCountEl) {
-    selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
-  }
-}
-
-function toggleSelect(id) {
-  if (selectedPlayerIds.has(id)) selectedPlayerIds.delete(id);
-  else selectedPlayerIds.add(id);
-  renderRoster();
-}
-
-function selectAllPlayers(val) {
-  if (val) selectedPlayerIds = new Set(players.map(p => p.id));
-  else selectedPlayerIds.clear();
-  renderRoster();
-}
-
-function handleBatchAdd() {
-  const txt = document.getElementById('batchNames').value.trim();
-  if (!txt) return;
-
-  txt.split('\n').map(n => n.trim()).filter(Boolean).forEach((name, i) => {
-    const defaultStats = { atk:70, srv:70, rcv:70, blk:70, stm:70, tmw:70 };
-    const newP = {
-      id: Date.now().toString() + i,
-      name, pos: 'Universal', jersey: Math.floor(Math.random()*99)+1,
-      photo: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardTheme: 'gold'
-    };
-    players.push(newP);
-    selectedPlayerIds.add(newP.id);
-  });
-
-  document.getElementById('batchNames').value = '';
-  saveAll();
-  renderRoster();
-}
-
-// MATCHMAKING ENGINE
-function generateMatch(balanced) {
-  const pool = players.filter(p => selectedPlayerIds.has(p.id));
-  if (pool.length < 2) return alert('Select at least 2 players!');
-
-  let teamA = [], teamB = [];
-
-  if (balanced) {
-    const sorted = [...pool].sort((a,b) => b.ovr - a.ovr);
-    let sumA = 0, sumB = 0;
-    sorted.forEach(p => {
-      if (sumA <= sumB && teamA.length < Math.ceil(pool.length / 2)) {
-        teamA.push(p); sumA += p.ovr;
-      } else {
-        teamB.push(p); sumB += p.ovr;
-      }
-    });
-  } else {
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    const mid = Math.ceil(shuffled.length / 2);
-    teamA = shuffled.slice(0, mid);
-    teamB = shuffled.slice(mid);
+    `).join('');
   }
 
-  const avgA = Math.round(teamA.reduce((s,p) => s + p.ovr, 0) / (teamA.length || 1));
-  const avgB = Math.round(teamB.reduce((s,p) => s + p.ovr, 0) / (teamB.length || 1));
-
-  currentMatchData = { teamA, teamB, avgA, avgB, mode: balanced ? 'Skill Balanced' : 'Pure Random' };
-
-  document.getElementById('generatedMatchPanel').style.display = 'block';
-  document.getElementById('diffIndicator').innerText = `Δ ${Math.abs(avgA - avgB)} OVR (${currentMatchData.mode})`;
-
-  document.getElementById('teamABox').innerHTML = `<h4 class="text-gold">Team A (Avg ${avgA})</h4>` +
-    teamA.map(p => `<div style="font-size:0.8rem;">${p.name} (${p.ovr})</div>`).join('');
-
-  document.getElementById('teamBBox').innerHTML = `<h4 class="text-blue">Team B (Avg ${avgB})</h4>` +
-    teamB.map(p => `<div style="font-size:0.8rem;">${p.name} (${p.ovr})</div>`).join('');
-
-  const mvpSelect = document.getElementById('mvpSelect');
-  mvpSelect.innerHTML = '<option value="">Select Match MVP (Optional)</option>' +
-    pool.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-}
-
-function saveMatchResult() {
-  if (!currentMatchData) return;
-
-  const scoreA = Number(document.getElementById('scoreA').value) || 0;
-  const scoreB = Number(document.getElementById('scoreB').value) || 0;
-  const mvpId = document.getElementById('mvpSelect').value;
-
-  if (mvpId) {
-    const mvpPlayer = players.find(p => p.id === mvpId);
-    if (mvpPlayer) mvpPlayer.mvps = (mvpPlayer.mvps || 0) + 1;
-  }
-
-  const record = {
-    id: Date.now().toString(),
-    date: new Date().toLocaleDateString(),
-    teamA: currentMatchData.teamA.map(p => p.name),
-    teamB: currentMatchData.teamB.map(p => p.name),
-    scoreA, scoreB,
-    mvpName: mvpId ? players.find(p => p.id === mvpId)?.name : 'None'
-  };
-
-  matchHistory.unshift(record);
-  saveAll();
-  alert('Match saved successfully!');
-  document.getElementById('generatedMatchPanel').style.display = 'none';
-}
-
-// MATCH HISTORY RENDERER
-function renderHistory() {
-  const container = document.getElementById('historyContainer');
-  if (matchHistory.length === 0) {
-    container.innerHTML = '<p class="sub-text">No past matches recorded yet.</p>';
-    return;
-  }
-
-  container.innerHTML = matchHistory.map(m => `
-    <div class="history-card">
-      <div class="history-header">
-        <span>${m.date}</span>
-        <span style="font-weight:bold; color:var(--accent-color);">${m.scoreA} - ${m.scoreB}</span>
+  const mvpList = document.getElementById('mvpLeaderboardList');
+  if (mvpList) {
+    mvpList.innerHTML = sortedByMVP.map(p => `
+      <div class="list-row">
+        <span>${p.name}</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${p.mvps || 0} MVPs</span>
       </div>
-      <div class="history-teams">
-        <div><strong class="text-gold">Team A:</strong> ${m.teamA.join(', ')}</div>
-        <div><strong class="text-blue">Team B:</strong> ${m.teamB.join(', ')}</div>
-      </div>
-      ${m.mvpName !== 'None' ? `<div class="mvp-badge">⭐ MVP: ${m.mvpName}</div>` : ''}
-    </div>
-  `).join('');
+    `).join('');
+  }
 }
 
-// MODAL HANDLERS
-function toggleCustomColorInputs(themeVal) {
-  const row = document.getElementById('customCardColorsRow');
-  row.style.display = (themeVal === 'custom') ? 'grid' : 'none';
-}
-
-// TRACK EDITING STATE & REMOVALS
-let currentEditingPlayer = null;
-let isPhotoRemoved = false;
-let isCardFrameRemoved = false;
+// MODAL CONTROLS
+window.closePlayerModal = function() {
+  const modal = document.getElementById("playerModal");
+  if (modal) modal.style.display = "none";
+};
 
 window.removeUploadedPhoto = function() {
   const photoInput = document.getElementById("editPhoto");
@@ -444,7 +230,6 @@ window.removeUploadedCardDesign = function() {
   alert("Card template cleared! Click 'Save Card' to confirm.");
 };
 
-// OPEN MODAL HANDLER
 window.openPlayerModal = function(id = null) {
   if (!isAdmin) {
     alert("Permission denied. Only Admins can edit players.");
@@ -495,7 +280,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// SAVE PLAYER HANDLER (PRESERVES IMAGES WHEN ONLY CHANGING TEXT COLOR OR STATS)
+// SAVE PLAYER HANDLER
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -514,29 +299,20 @@ window.handleSavePlayer = async function(e) {
   const customFrameFile = document.getElementById("editCustomCardFrame")?.files[0];
   let directCardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || "";
 
-  // 1. Preserve Photo URL
+  // Preserve Photo
   let photoUrl = "";
-  if (photoFile) {
-    photoUrl = await convertFileToBase64(photoFile);
-  } else if (tempPhotoBase64) {
-    photoUrl = tempPhotoBase64;
-  } else if (currentEditingPlayer && !isPhotoRemoved) {
-    photoUrl = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
-  }
+  if (photoFile) photoUrl = await convertFileToBase64(photoFile);
+  else if (tempPhotoBase64) photoUrl = tempPhotoBase64;
+  else if (currentEditingPlayer && !isPhotoRemoved) photoUrl = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
 
   if (isPhotoRemoved) photoUrl = "";
 
-  // 2. Preserve Card Frame / Animated GIF URL
+  // Preserve Card Frame / GIF
   let cardFrameUrl = "";
-  if (customFrameFile) {
-    cardFrameUrl = await convertFileToBase64(customFrameFile);
-  } else if (directCardUrl) {
-    cardFrameUrl = directCardUrl;
-  } else if (tempPlayerCardFrameBase64) {
-    cardFrameUrl = tempPlayerCardFrameBase64;
-  } else if (currentEditingPlayer && !isCardFrameRemoved) {
-    cardFrameUrl = currentEditingPlayer.cardFrameUrl || "";
-  }
+  if (customFrameFile) cardFrameUrl = await convertFileToBase64(customFrameFile);
+  else if (directCardUrl) cardFrameUrl = directCardUrl;
+  else if (tempPlayerCardFrameBase64) cardFrameUrl = tempPlayerCardFrameBase64;
+  else if (currentEditingPlayer && !isCardFrameRemoved) cardFrameUrl = currentEditingPlayer.cardFrameUrl || "";
 
   if (isCardFrameRemoved) cardFrameUrl = "";
 
@@ -559,9 +335,10 @@ window.handleSavePlayer = async function(e) {
   };
 
   try {
-    await db.collection("players").doc(editId).set(playerData, { merge: true });
+    if (window.db) {
+      await db.collection("players").doc(editId).set(playerData, { merge: true });
+    }
 
-    // Instantly update global JS array
     const idx = players.findIndex(p => p.id === editId);
     if (idx >= 0) {
       players[idx] = { ...players[idx], ...playerData };
@@ -570,6 +347,7 @@ window.handleSavePlayer = async function(e) {
       selectedPlayerIds.add(editId);
     }
 
+    saveAll();
     closePlayerModal();
     renderRoster();
   } catch (err) {
@@ -577,51 +355,29 @@ window.handleSavePlayer = async function(e) {
   }
 };
 
-
-
 window.handleDeletePlayer = function() {
   if (!isAdmin) {
     alert("Permission denied. Only Admins can delete players.");
     return;
   }
 
-  const editId = document.getElementById("editId").value;
+  const editId = document.getElementById("editId")?.value;
   if (!editId) return;
 
   if (confirm("Are you sure you want to delete this player?")) {
     players = players.filter(p => p.id !== editId);
+    if (window.db) {
+      db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
+    }
     saveAll();
     closePlayerModal();
     renderRoster();
   }
 };
 
-function syncCloudData() {
-  db.collection("appData").doc("roster").onSnapshot((doc) => {
-    if (doc.exists) {
-      const data = doc.data();
-      if (data.players) players = data.players;
-      if (data.matchHistory) matchHistory = data.matchHistory;
-      if (data.appSettings) appSettings = data.appSettings;
-      
-      applySettings();
-      renderRoster();
-      renderDashboard();
-    }
-  });
-}
-
-syncCloudData();
-
-applySettings();
-renderDashboard();
-
-// LIVE ANIMATED GIF CARD RENDERER (CSS OVERLAY)
-// LIVE ANIMATED GIF CARD RENDERER (PURE OVERLAY)
-// 1. LISTEN TO FIRESTORE & SYNC GLOBAL PLAYERS ARRAY
 // LISTEN TO FIRESTORE & KEEP GLOBAL ARRAY IN SYNC
 function listenToPlayerRoster() {
-  if (!window.firebase || !firebase.firestore) {
+  if (!window.firebase || !firebase.firestore || !window.db) {
     renderRoster();
     return;
   }
@@ -635,12 +391,12 @@ function listenToPlayerRoster() {
     }
     renderRoster();
   }, err => {
-    console.error("Roster error:", err);
+    console.error("Roster snapshot error:", err);
     renderRoster();
   });
 }
 
-// RENDER ROSTER (PURE CSS OVERLAY FOR ANIMATED GIFS & LIVE TEXT)
+// RENDER ROSTER (PURE CSS OVERLAY)
 function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
@@ -654,7 +410,6 @@ function renderRoster() {
     const pId = p.id;
     const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
 
-    // Card Layers
     const bgGif = p.cardFrameUrl || 'assets/frames/gold.png';
     const photo = p.photoUrl || p.photo || '';
     const textColor = p.textColor || '#220e02';
@@ -717,119 +472,11 @@ function renderRoster() {
     selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
   }
 }
-document.addEventListener("DOMContentLoaded", listenToPlayerRoster);
 
-function generatePlayerCardImage(p) {
-  return new Promise((resolve) => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 400;
-    canvas.height = 600;
-    const ctx = canvas.getContext("2d");
-
-    ctx.clearRect(0, 0, 400, 600);
-
-    const loadImage = (src) => new Promise((res) => {
-      if (!src) return res(null);
-      const img = new Image();
-      img.crossOrigin = "Anonymous";
-      img.onload = () => res(img);
-      img.onerror = () => res(null);
-      img.src = src;
-    });
-
-    Promise.all([
-      loadImage(p.cardFrameUrl),
-      loadImage(p.photoUrl)
-    ]).then(([frameImg, photoImg]) => {
-
-      if (frameImg) {
-        ctx.drawImage(frameImg, 0, 0, 400, 600);
-      } else {
-        const grad = ctx.createLinearGradient(0, 0, 0, 600);
-        grad.addColorStop(0, "#fef08a");
-        grad.addColorStop(0.5, "#f59e0b");
-        grad.addColorStop(1, "#78350f");
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.roundRect(15, 15, 370, 570, 24);
-        ctx.fill();
-      }
-
-      if (photoImg) {
-        ctx.save();
-        const scale = (p.photoScale || 100) / 100;
-        const baseW = 240 * scale;
-        const baseH = 240 * scale;
-        const posX = 80 + (p.photoX || 0) - ((baseW - 240) / 2);
-        const posY = 80 + (p.photoY || 0) - ((baseH - 240) / 2);
-
-        ctx.shadowColor = "rgba(0,0,0,0.3)";
-        ctx.shadowBlur = 8;
-        ctx.drawImage(photoImg, posX, posY, baseW, baseH);
-        ctx.restore();
-      }
-
-      const textColor = p.textColor || "#220e02";
-
-      ctx.fillStyle = textColor;
-      ctx.textAlign = "center";
-
-      ctx.font = "900 62px 'Arial Black', sans-serif";
-      ctx.fillText(p.ovr || 70, 85, 115);
-
-      ctx.font = "800 24px sans-serif";
-      ctx.fillText((p.pos || "OH").substring(0, 3).toUpperCase(), 85, 148);
-
-      ctx.strokeStyle = textColor;
-      ctx.globalAlpha = 0.4;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(55, 160);
-      ctx.lineTo(115, 160);
-      ctx.stroke();
-      ctx.globalAlpha = 1.0;
-
-      const nameY = 355 + (p.nameY || 0);
-      ctx.font = "900 32px 'Arial Black', sans-serif";
-      ctx.fillText((p.name || "PLAYER").toUpperCase(), 200, nameY);
-
-      ctx.globalAlpha = 0.3;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(40, nameY + 13);
-      ctx.lineTo(360, nameY + 13);
-      ctx.stroke();
-      ctx.globalAlpha = 1.0;
-
-      const stats = [
-        { label: "ATK", val: p.stats?.atk || 70 },
-        { label: "RCV", val: p.stats?.rcv || 70 },
-        { label: "BLK", val: p.stats?.blk || 70 },
-        { label: "STM", val: p.stats?.stm || 70 },
-        { label: "SRV", val: p.stats?.srv || 70 },
-        { label: "TMW", val: p.stats?.tmw || 70 },
-      ];
-
-      const col1X = 135, col2X = 275;
-      const startY = 425 + (p.statsY || 0), rowHeight = 44;
-
-      stats.forEach((st, idx) => {
-        const x = idx % 2 === 0 ? col1X : col2X;
-        const y = startY + (Math.floor(idx / 2) * rowHeight);
-
-        ctx.fillStyle = textColor;
-        ctx.textAlign = "right";
-        ctx.font = "900 24px sans-serif";
-        ctx.fillText(st.val, x - 8, y);
-
-        ctx.textAlign = "left";
-        ctx.font = "700 18px sans-serif";
-        ctx.fillText(st.label, x + 2, y);
-      });
-
-      resolve(canvas.toDataURL("image/png"));
-    });
-  });
+function toggleSelect(id) {
+  if (selectedPlayerIds.has(id)) selectedPlayerIds.delete(id);
+  else selectedPlayerIds.add(id);
+  renderRoster();
 }
 
 function convertFileToBase64(file) {
@@ -841,24 +488,8 @@ function convertFileToBase64(file) {
   });
 }
 
-// TRACK REMOVAL STATE
-let isPhotoRemoved = false;
-let isCardFrameRemoved = false;
-
-window.removeUploadedPhoto = function() {
-  const photoInput = document.getElementById("editPhoto");
-  if (photoInput) photoInput.value = "";
-  tempPhotoBase64 = "";
-  isPhotoRemoved = true;
-  alert("Photo cleared. Click 'Save Card' to confirm changes.");
-};
-
-window.removeUploadedCardDesign = function() {
-  const frameInput = document.getElementById("editCustomCardFrame");
-  const urlInput = document.getElementById("editCardImageUrl");
-  if (frameInput) frameInput.value = "";
-  if (urlInput) urlInput.value = "";
-  tempPlayerCardFrameBase64 = "";
-  isCardFrameRemoved = true;
-  alert("Card graphic cleared. Click 'Save Card' to confirm changes.");
-};
+document.addEventListener("DOMContentLoaded", () => {
+  listenToPlayerRoster();
+  applySettings();
+  renderDashboard();
+});
