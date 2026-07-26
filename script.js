@@ -760,23 +760,143 @@ function listenToPlayerRoster() {
   if (!window.firebase || !firebase.firestore) return;
 
   firebase.firestore().collection("players").onSnapshot(snapshot => {
-    if (snapshot.empty) return;
-    
-    snapshot.docs.forEach(doc => {
-      const p = doc.data();
-      const idx = players.findIndex(item => item.id === doc.id);
-      if (idx >= 0) {
-        players[idx] = { ...players[idx], ...p };
-      } else {
-        players.push({ id: doc.id, ...p });
-      }
-    });
+    const grid = document.getElementById('rosterGrid');
+    if (!grid || snapshot.empty) return;
 
-    renderRoster();
+    grid.innerHTML = snapshot.docs.map(doc => {
+      const p = doc.data();
+      const pId = doc.id;
+      const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
+      const cardImg = p.cardImageUrl || p.generatedCardUrl || 'assets/frames/gold.png';
+
+      return `
+        <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" style="display:inline-block; margin:8px; cursor:pointer;">
+          <div style="position: relative; width: 220px; height: 330px;">
+            <img src="${cardImg}" alt="${p.name}" style="width: 100%; height: 100%; object-fit: contain; display: block;">
+            ${isAdmin ? `
+              <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); width: 80%; padding: 4px 8px; font-size: 0.75rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px;">Edit Card</button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
   });
 }
 
 document.addEventListener("DOMContentLoaded", listenToPlayerRoster);
+
+function generatePlayerCardImage(p) {
+  return new Promise((resolve) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 400;
+    canvas.height = 600;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, 400, 600);
+
+    const loadImage = (src) => new Promise((res) => {
+      if (!src) return res(null);
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.onload = () => res(img);
+      img.onerror = () => res(null);
+      img.src = src;
+    });
+
+    Promise.all([
+      loadImage(p.cardFrameUrl),
+      loadImage(p.photoUrl)
+    ]).then(([frameImg, photoImg]) => {
+
+      if (frameImg) {
+        ctx.drawImage(frameImg, 0, 0, 400, 600);
+      } else {
+        const grad = ctx.createLinearGradient(0, 0, 0, 600);
+        grad.addColorStop(0, "#fef08a");
+        grad.addColorStop(0.5, "#f59e0b");
+        grad.addColorStop(1, "#78350f");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.roundRect(15, 15, 370, 570, 24);
+        ctx.fill();
+      }
+
+      if (photoImg) {
+        ctx.save();
+        const scale = (p.photoScale || 100) / 100;
+        const baseW = 240 * scale;
+        const baseH = 240 * scale;
+        const posX = 80 + (p.photoX || 0) - ((baseW - 240) / 2);
+        const posY = 80 + (p.photoY || 0) - ((baseH - 240) / 2);
+
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowBlur = 8;
+        ctx.drawImage(photoImg, posX, posY, baseW, baseH);
+        ctx.restore();
+      }
+
+      const textColor = p.textColor || "#220e02";
+
+      ctx.fillStyle = textColor;
+      ctx.textAlign = "center";
+
+      ctx.font = "900 62px 'Arial Black', sans-serif";
+      ctx.fillText(p.ovr || 70, 85, 115);
+
+      ctx.font = "800 24px sans-serif";
+      ctx.fillText((p.pos || "OH").substring(0, 3).toUpperCase(), 85, 148);
+
+      ctx.strokeStyle = textColor;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(55, 160);
+      ctx.lineTo(115, 160);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+
+      const nameY = 355 + (p.nameY || 0);
+      ctx.font = "900 32px 'Arial Black', sans-serif";
+      ctx.fillText((p.name || "PLAYER").toUpperCase(), 200, nameY);
+
+      ctx.globalAlpha = 0.3;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(40, nameY + 13);
+      ctx.lineTo(360, nameY + 13);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+
+      const stats = [
+        { label: "ATK", val: p.stats?.atk || 70 },
+        { label: "RCV", val: p.stats?.rcv || 70 },
+        { label: "BLK", val: p.stats?.blk || 70 },
+        { label: "STM", val: p.stats?.stm || 70 },
+        { label: "SRV", val: p.stats?.srv || 70 },
+        { label: "TMW", val: p.stats?.tmw || 70 },
+      ];
+
+      const col1X = 135, col2X = 275;
+      const startY = 425 + (p.statsY || 0), rowHeight = 44;
+
+      stats.forEach((st, idx) => {
+        const x = idx % 2 === 0 ? col1X : col2X;
+        const y = startY + (Math.floor(idx / 2) * rowHeight);
+
+        ctx.fillStyle = textColor;
+        ctx.textAlign = "right";
+        ctx.font = "900 24px sans-serif";
+        ctx.fillText(st.val, x - 8, y);
+
+        ctx.textAlign = "left";
+        ctx.font = "700 18px sans-serif";
+        ctx.fillText(st.label, x + 2, y);
+      });
+
+      resolve(canvas.toDataURL("image/png"));
+    });
+  });
+}
 
 function convertFileToBase64(file) {
   return new Promise((resolve, reject) => {
