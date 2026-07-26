@@ -422,6 +422,10 @@ function toggleCustomColorInputs(themeVal) {
 }
 
 window.openPlayerModal = function(id = null) {
+  // Reset removal flags whenever modal opens
+  isPhotoRemoved = false;
+  isCardFrameRemoved = false;
+  
   if (!isAdmin) {
     alert("Permission denied. Only Admins can edit players.");
     return;
@@ -630,6 +634,17 @@ window.handleSavePlayer = async function(e) {
 
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
+  if (isPhotoRemoved) {
+    photoUrl = "";
+    tempPhotoBase64 = "";
+  }
+
+  if (isCardFrameRemoved) {
+    cardFrameUrl = "";
+    tempPlayerCardFrameBase64 = "";
+    directCardUrl = "";
+  }
+  
   const finalGeneratedCardUrl = await generatePlayerCardImage({
     name, pos, ovr, stats, photoUrl, cardFrameUrl
   });
@@ -742,3 +757,25 @@ function convertFileToBase64(file) {
     reader.onerror = (error) => reject(error);
   });
 }
+
+// TRACK REMOVAL STATE
+let isPhotoRemoved = false;
+let isCardFrameRemoved = false;
+
+window.removeUploadedPhoto = function() {
+  const photoInput = document.getElementById("editPhoto");
+  if (photoInput) photoInput.value = "";
+  tempPhotoBase64 = "";
+  isPhotoRemoved = true;
+  alert("Photo cleared. Click 'Save Card' to confirm changes.");
+};
+
+window.removeUploadedCardDesign = function() {
+  const frameInput = document.getElementById("editCustomCardFrame");
+  const urlInput = document.getElementById("editCardImageUrl");
+  if (frameInput) frameInput.value = "";
+  if (urlInput) urlInput.value = "";
+  tempPlayerCardFrameBase64 = "";
+  isCardFrameRemoved = true;
+  alert("Card graphic cleared. Click 'Save Card' to confirm changes.");
+};

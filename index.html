@@ -231,10 +231,12 @@
           </div>
         </div>
 
+
         <!-- UPDATED IMAGE & CARD UPLOAD SECTION -->
         <div class="mt-sm">
           <label class="input-lbl">Upload Player Photo Cutout</label>
           <input type="file" id="editPhoto" accept="image/*">
+          <button type="button" class="btn btn-sm btn-sec" onclick="removeUploadedPhoto()" style="margin-top: 6px; padding: 4px 10px; font-size: 0.75rem;">🗑️ Remove Photo</button>
         </div>
 
         <div class="mt-sm" style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
@@ -242,7 +244,9 @@
           <input type="file" id="editCustomCardFrame" accept="image/*" style="margin-bottom: 6px;">
           
           <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct card Image URL / Base64 string:</span>
-          <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.png" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff;">
+          <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.png" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-bottom: 6px;">
+          
+          <button type="button" class="btn btn-sm btn-sec" onclick="removeUploadedCardDesign()" style="padding: 4px 10px; font-size: 0.75rem;">🗑️ Clear Custom Card Graphic</button>
         </div>
 
         <!-- INDIVIDUAL CARD THEME SELECTOR -->
