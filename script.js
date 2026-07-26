@@ -508,6 +508,7 @@ if (document.getElementById('editCustomCardFrame')) {
 }
 
 // CANVAS GENERATOR ENGINE
+// ADVANCED FIFA ULTIMATE TEAM CANVAS CARD GENERATOR
 function generatePlayerCardImage(p) {
   return new Promise((resolve) => {
     const canvas = document.createElement("canvas");
@@ -524,76 +525,146 @@ function generatePlayerCardImage(p) {
       img.src = src;
     });
 
+    // FUT Shield Path Helper
+    const drawFutShield = (c, w, h) => {
+      c.beginPath();
+      c.moveTo(50, 20);
+      c.lineTo(w - 50, 20);
+      c.lineTo(w - 20, 60);
+      c.lineTo(w - 20, h - 90);
+      c.lineTo(w / 2, h - 20);
+      c.lineTo(20, h - 90);
+      c.lineTo(20, 60);
+      c.closePath();
+    };
+
     Promise.all([
-      loadImage(p.cardFrameUrl),
-      loadImage(p.photoUrl)
+      loadImage(p.cardFrameUrl), // Background design or frame
+      loadImage(p.photoUrl)      // Player cutout photo
     ]).then(([frameImg, photoImg]) => {
 
+      // 1. CLIP TO FUT SHIELD SHAPE
+      ctx.save();
+      drawFutShield(ctx, 400, 600);
+      ctx.clip();
+
+      // 2. BACKGROUND (CUSTOM TEMPLATE OR FUT METALLIC GOLD GRADIENT)
       if (frameImg) {
         ctx.drawImage(frameImg, 0, 0, 400, 600);
       } else {
-        const grad = ctx.createLinearGradient(0, 0, 0, 600);
-        grad.addColorStop(0, "#fef08a");
-        grad.addColorStop(0.5, "#f59e0b");
-        grad.addColorStop(1, "#78350f");
-        ctx.fillStyle = grad;
+        // Multi-stage Metallic Gold Background
+        const goldGrad = ctx.createLinearGradient(0, 0, 400, 600);
+        goldGrad.addColorStop(0, "#fffae0");
+        goldGrad.addColorStop(0.2, "#eab308");
+        goldGrad.addColorStop(0.5, "#ca8a04");
+        goldGrad.addColorStop(0.8, "#854d0e");
+        goldGrad.addColorStop(1, "#422006");
+        ctx.fillStyle = goldGrad;
+        ctx.fill();
+
+        // Holographic Geometric Stripes
+        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
         ctx.beginPath();
-        ctx.roundRect(10, 10, 380, 580, 24);
+        ctx.moveTo(0, 0); ctx.lineTo(200, 0); ctx.lineTo(400, 600); ctx.lineTo(200, 600);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(100, 0); ctx.lineTo(300, 0); ctx.lineTo(200, 600); ctx.lineTo(0, 600);
         ctx.fill();
       }
 
+      // 3. DRAW PLAYER CUTOUT PHOTO
       if (photoImg) {
-        ctx.drawImage(photoImg, 100, 90, 250, 250);
+        ctx.save();
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = 15;
+        ctx.shadowOffsetY = 10;
+        ctx.drawImage(photoImg, 80, 75, 260, 260);
+        ctx.restore();
       }
 
-      const color = "#ffffff";
-      ctx.fillStyle = color;
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 4;
-
+      // 4. PLAYER RATING & POSITION (TOP LEFT BADGE)
+      ctx.fillStyle = "#3a1300";
       ctx.textAlign = "center";
-      ctx.font = "900 52px sans-serif";
-      ctx.fillText(p.ovr, 75, 120);
+      
+      // OVR Rating
+      ctx.font = "900 58px 'Arial Black', sans-serif";
+      ctx.fillText(p.ovr || 70, 82, 115);
 
-      ctx.font = "700 24px sans-serif";
-      ctx.fillText((p.pos || "OH").substring(0, 3).toUpperCase(), 75, 155);
+      // Position
+      ctx.font = "800 24px sans-serif";
+      ctx.fillText((p.pos || "OH").substring(0, 3).toUpperCase(), 82, 145);
 
-      ctx.font = "900 32px sans-serif";
-      ctx.fillText((p.name || "PLAYER").toUpperCase(), 200, 360);
-
-      ctx.strokeStyle = color;
+      // Divider Line Under Position
+      ctx.strokeStyle = "rgba(58, 19, 0, 0.4)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(50, 380);
-      ctx.lineTo(350, 380);
+      ctx.moveTo(55, 160);
+      ctx.lineTo(110, 160);
       ctx.stroke();
 
+      // 5. PLAYER NAME BANNER
+      ctx.shadowColor = "rgba(0,0,0,0.6)";
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = "#3a1300";
+      ctx.font = "900 30px 'Arial Black', sans-serif";
+      ctx.fillText((p.name || "PLAYER").toUpperCase(), 200, 355);
+
+      // Name Separator Line
+      ctx.strokeStyle = "rgba(58, 19, 0, 0.5)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(40, 370);
+      ctx.lineTo(360, 370);
+      ctx.stroke();
+
+      // 6. DARK GLASS CONTAINER FOR STATS
+      ctx.fillStyle = "rgba(15, 23, 42, 0.45)";
+      ctx.beginPath();
+      ctx.roundRect(40, 385, 320, 155, 12);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(254, 240, 138, 0.3)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // 7. VOLLEYBALL STATS GRID (3x2 Layout)
       const stats = [
-        { label: "ATK", val: p.stats.atk },
-        { label: "BLK", val: p.stats.blk },
-        { label: "SRV", val: p.stats.srv },
-        { label: "RCV", val: p.stats.rcv },
-        { label: "STM", val: p.stats.stm },
-        { label: "TMW", val: p.stats.tmw },
+        { label: "ATK", val: p.stats?.atk || 70 },
+        { label: "BLK", val: p.stats?.blk || 70 },
+        { label: "SRV", val: p.stats?.srv || 70 },
+        { label: "RCV", val: p.stats?.rcv || 70 },
+        { label: "STM", val: p.stats?.stm || 70 },
+        { label: "TMW", val: p.stats?.tmw || 70 },
       ];
 
-      ctx.font = "700 22px sans-serif";
-      const col1X = 130, col2X = 270;
-      const startY = 420, rowHeight = 45;
+      const col1X = 135, col2X = 275;
+      const startY = 425, rowHeight = 42;
 
       stats.forEach((st, idx) => {
         const x = idx < 3 ? col1X : col2X;
         const y = startY + ((idx % 3) * rowHeight);
 
+        // Stat Value
+        ctx.fillStyle = "#fef08a";
         ctx.textAlign = "right";
-        ctx.font = "800 22px sans-serif";
-        ctx.fillText(st.val, x - 10, y);
+        ctx.font = "900 24px sans-serif";
+        ctx.fillText(st.val, x - 8, y);
 
+        // Stat Label
+        ctx.fillStyle = "#ffffff";
         ctx.textAlign = "left";
-        ctx.font = "500 18px sans-serif";
-        ctx.fillText(st.label, x, y);
+        ctx.font = "700 18px sans-serif";
+        ctx.fillText(st.label, x + 2, y);
       });
 
+      ctx.restore(); // Restore clip
+
+      // 8. GOLD SHIELD BORDER OVERLAY
+      drawFutShield(ctx, 400, 600);
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = "#fef08a";
+      ctx.stroke();
+
+      // Export high-res PNG string
       resolve(canvas.toDataURL("image/png"));
     });
   });
@@ -644,7 +715,7 @@ window.handleSavePlayer = async function(e) {
     tempPlayerCardFrameBase64 = "";
     directCardUrl = "";
   }
-  
+
   const finalGeneratedCardUrl = await generatePlayerCardImage({
     name, pos, ovr, stats, photoUrl, cardFrameUrl
   });
