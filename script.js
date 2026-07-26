@@ -20,15 +20,13 @@ auth.onAuthStateChanged((user) => {
     if (logoutBtn) logoutBtn.style.display = "none";
   }
   
-  if (typeof renderRoster === "function") {
-    renderRoster();
-  }
+  renderRoster();
+  renderMatchTab();
 });
 
 window.openLoginModal = function() {
   const modal = document.getElementById("loginModal");
   if (modal) modal.style.display = "flex";
-  else alert("Modal element #loginModal not found in HTML!");
 };
 
 window.closeLoginModal = function() {
@@ -56,8 +54,8 @@ const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/20
 
 // GLOBAL STATE
 let players = JSON.parse(localStorage.getItem('vb_hub_players')) || [
-  { id: '1', name: 'Alex Cruz', pos: 'Attacker', jersey: 7, photo: DEFAULT_AVATAR, stats: { atk:85, srv:78, rcv:70, blk:72, stm:80, tmw:82 }, ovr: 78, mvps: 2, cardTheme: 'gold' },
-  { id: '2', name: 'Sam Taylor', pos: 'Setter', jersey: 12, photo: DEFAULT_AVATAR, stats: { atk:60, srv:82, rcv:88, blk:65, stm:78, tmw:92 }, ovr: 78, mvps: 1, cardTheme: 'emerald' }
+  { id: '1', name: 'Alex Cruz', pos: 'Attacker', jersey: 7, photo: DEFAULT_AVATAR, stats: { atk:85, srv:78, rcv:70, blk:72, stm:80, tmw:82 }, ovr: 78, mvps: 2 },
+  { id: '2', name: 'Sam Taylor', pos: 'Setter', jersey: 12, photo: DEFAULT_AVATAR, stats: { atk:60, srv:82, rcv:88, blk:65, stm:78, tmw:92 }, ovr: 78, mvps: 1 }
 ];
 
 let matchHistory = JSON.parse(localStorage.getItem('vb_hub_history')) || [];
@@ -68,7 +66,7 @@ let appSettings = JSON.parse(localStorage.getItem('vb_hub_settings')) || {
   accentColor: '#fbbf24'
 };
 
-let selectedPlayerIds = new Set(players.map(p => p.id));
+let selectedPlayerIds = new Set(players.map(p => String(p.id)));
 let currentMatchData = null;
 let tempPhotoBase64 = null;
 let tempPlayerCardFrameBase64 = null;
@@ -151,6 +149,7 @@ function handleGlobalCardDesignUpload(e) {
       appSettings.globalCardDesignImg = reader.result;
       saveAll();
       renderRoster();
+      renderMatchTab();
     };
     reader.readAsDataURL(file);
   }
@@ -160,6 +159,7 @@ function clearGlobalCardDesign() {
   appSettings.globalCardDesignImg = '';
   saveAll();
   renderRoster();
+  renderMatchTab();
 }
 
 // BACKUP & RESTORE
@@ -187,6 +187,7 @@ function importDataBackup(e) {
       saveAll();
       applySettings();
       renderRoster();
+      renderMatchTab();
       alert('Backup restored successfully!');
     } catch (err) {
       alert('Invalid backup JSON file.');
@@ -206,6 +207,7 @@ function switchTab(tabId, event) {
 
   if (tabId === 'dashboardTab') renderDashboard();
   if (tabId === 'playersTab') renderRoster();
+  if (tabId === 'matchTab') renderMatchTab();
   if (tabId === 'historyTab') renderHistory();
   if (tabId === 'settingsTab') applySettings();
 }
@@ -280,7 +282,7 @@ window.openPlayerModal = function(id = null) {
   if (!modal) return;
 
   if (id) {
-    currentEditingPlayer = players.find(p => p.id === id) || null;
+    currentEditingPlayer = players.find(p => String(p.id) === String(id)) || null;
     if (currentEditingPlayer) {
       if (document.getElementById("editId")) document.getElementById("editId").value = currentEditingPlayer.id;
       if (document.getElementById("editName")) document.getElementById("editName").value = currentEditingPlayer.name || "";
@@ -372,17 +374,18 @@ window.handleSavePlayer = async function(e) {
       await db.collection("players").doc(editId).set(playerData, { merge: true });
     }
 
-    const idx = players.findIndex(p => p.id === editId);
+    const idx = players.findIndex(p => String(p.id) === String(editId));
     if (idx >= 0) {
       players[idx] = { ...players[idx], ...playerData };
     } else {
       players.push(playerData);
-      selectedPlayerIds.add(editId);
+      selectedPlayerIds.add(String(editId));
     }
 
     saveAll();
     closePlayerModal();
     renderRoster();
+    renderMatchTab();
   } catch (err) {
     alert("Failed to save player: " + err.message);
   }
@@ -398,14 +401,15 @@ window.handleDeletePlayer = function() {
   if (!editId) return;
 
   if (confirm("Are you sure you want to delete this player?")) {
-    players = players.filter(p => p.id !== editId);
-    selectedPlayerIds.delete(editId);
+    players = players.filter(p => String(p.id) !== String(editId));
+    selectedPlayerIds.delete(String(editId));
     if (window.db) {
       db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
     }
     saveAll();
     closePlayerModal();
     renderRoster();
+    renderMatchTab();
   }
 };
 
@@ -413,27 +417,94 @@ window.handleDeletePlayer = function() {
 function listenToPlayerRoster() {
   if (!window.firebase || !firebase.firestore || !window.db) {
     renderRoster();
+    renderMatchTab();
     return;
   }
 
   db.collection("players").onSnapshot(snapshot => {
     if (snapshot && !snapshot.empty) {
       players = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        id: String(doc.id)
       }));
       
-      // Auto-select players on first load
-      players.forEach(p => selectedPlayerIds.add(p.id));
+      if (selectedPlayerIds.size === 0) {
+        players.forEach(p => selectedPlayerIds.add(String(p.id)));
+      }
     }
     renderRoster();
+    renderMatchTab();
   }, err => {
     console.error("Roster snapshot error:", err);
     renderRoster();
+    renderMatchTab();
   });
 }
 
-// RENDER ROSTER
+// CARD BUILDER TEMPLATE
+function createCardHTML(p, pId, isSel, showEditButton = true) {
+  const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || 'assets/frames/gold.png';
+  const photo = p.photoUrl || p.photo || '';
+  const textColor = p.textColor || '#220e02';
+  const name = (p.name || 'PLAYER').toUpperCase();
+  const pos = (p.pos || 'OH').substring(0, 3).toUpperCase();
+  const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
+  const ovr = p.ovr || 70;
+
+  const outlineStyle = isSel 
+    ? 'border: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7);' 
+    : 'border: 3px solid transparent; border-radius: 12px; opacity: 0.6;';
+
+  return `
+    <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
+         style="display:inline-block; margin: 8px; cursor: pointer; user-select: none; transition: all 0.2s ease; ${outlineStyle}">
+      
+      <div style="position: relative; width: 200px; height: 300px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));">
+        
+        <!-- LAYER 1: CARD BACKGROUND FRAME -->
+        <img src="${bgGif}" alt="Card Frame" 
+             style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;"
+             onerror="this.onerror=null; this.src='assets/frames/gold.png';">
+
+        <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
+        ${photo ? `
+          <img src="${photo}" alt="${name}" 
+               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 2;">
+        ` : ''}
+
+        <!-- LAYER 3: OVR RATING & POSITION -->
+        <div style="position: absolute; top: 20px; left: 22px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
+          <div style="font-size: 28px; font-weight: 900; line-height: 1;">${ovr}</div>
+          <div style="font-size: 11px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
+        </div>
+
+        <!-- LAYER 4: PLAYER NAME -->
+        <div style="position: absolute; top: 170px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 14px; letter-spacing: 0.5px;">
+          ${name}
+        </div>
+
+        <!-- LAYER 5: STATS GRID -->
+        <div style="position: absolute; top: 210px; left: 30px; right: 30px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${textColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
+          <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">ATK</span></div>
+          <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">RCV</span></div>
+          <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">BLK</span></div>
+          <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">STM</span></div>
+          <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">SRV</span></div>
+          <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">TMW</span></div>
+        </div>
+
+        <!-- LAYER 6: EDIT BUTTON -->
+        ${(isAdmin && showEditButton) ? `
+          <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
+                  style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 80%; padding: 3px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
+        ` : ''}
+
+      </div>
+    </div>
+  `;
+}
+
+// RENDER ROSTER TAB
 function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
@@ -443,120 +514,87 @@ function renderRoster() {
     return;
   }
 
-  grid.innerHTML = players.map(p => {
-    const pId = p.id;
-    const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
+  grid.innerHTML = players.map(p => createCardHTML(p, String(p.id), selectedPlayerIds.has(String(p.id)), true)).join('');
+}
 
-    const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || 'assets/frames/gold.png';
-    const photo = p.photoUrl || p.photo || '';
-    const textColor = p.textColor || '#220e02';
-    const name = (p.name || 'PLAYER').toUpperCase();
-    const pos = (p.pos || 'OH').substring(0, 3).toUpperCase();
-    const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
-    const ovr = p.ovr || 70;
-
-    return `
-      <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
-           style="display:inline-block; margin: 10px; cursor: pointer; user-select: none;">
-        
-        <div style="position: relative; width: 220px; height: 330px; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.5));">
-          
-          <!-- LAYER 1: ANIMATED GIF / BLANK FRAME -->
-          <img src="${bgGif}" alt="Card Frame" 
-               style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;"
-               onerror="this.onerror=null; this.src='assets/frames/gold.png';">
-
-          <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
-          ${photo ? `
-            <img src="${photo}" alt="${name}" 
-                 style="position: absolute; top: 42px; left: 45px; width: 130px; height: 130px; object-fit: contain; z-index: 2;">
-          ` : ''}
-
-          <!-- LAYER 3: OVR RATING & POSITION -->
-          <div style="position: absolute; top: 22px; left: 24px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
-            <div style="font-size: 32px; font-weight: 900; line-height: 1;">${ovr}</div>
-            <div style="font-size: 13px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
-          </div>
-
-          <!-- LAYER 4: PLAYER NAME -->
-          <div style="position: absolute; top: 188px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 16px; letter-spacing: 0.5px;">
-            ${name}
-          </div>
-
-          <!-- LAYER 5: STATS GRID -->
-          <div style="position: absolute; top: 232px; left: 35px; right: 35px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 3px; color: ${textColor}; font-family: sans-serif; font-size: 12px; font-weight: 900;">
-            <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">ATK</span></div>
-            <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">RCV</span></div>
-            <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">BLK</span></div>
-            <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">STM</span></div>
-            <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">SRV</span></div>
-            <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 9px; font-weight: 700; opacity: 0.85;">TMW</span></div>
-          </div>
-
-          <!-- LAYER 6: EDIT BUTTON (ADMIN ONLY) -->
-          ${isAdmin ? `
-            <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
-                    style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 80%; padding: 4px; font-size: 0.7rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
-          ` : ''}
-
-        </div>
-      </div>
-    `;
-  }).join('');
-
+// RENDER MATCHMAKER TAB
+function renderMatchTab() {
+  const grid = document.getElementById('matchTabRosterGrid');
   const selectedCountEl = document.getElementById('selectedCount');
+
   if (selectedCountEl) {
     selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
   }
+
+  if (!grid) return;
+
+  if (!players || players.length === 0) {
+    grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players available to select.</p>';
+    return;
+  }
+
+  grid.innerHTML = players.map(p => createCardHTML(p, String(p.id), selectedPlayerIds.has(String(p.id)), false)).join('');
 }
 
 function toggleSelect(id) {
-  if (selectedPlayerIds.has(id)) selectedPlayerIds.delete(id);
-  else selectedPlayerIds.add(id);
+  const strId = String(id);
+  if (selectedPlayerIds.has(strId)) {
+    selectedPlayerIds.delete(strId);
+  } else {
+    selectedPlayerIds.add(strId);
+  }
   renderRoster();
+  renderMatchTab();
 }
 
 function selectAllPlayers(val) {
-  if (val) selectedPlayerIds = new Set(players.map(p => p.id));
-  else selectedPlayerIds.clear();
+  if (val) {
+    selectedPlayerIds = new Set(players.map(p => String(p.id)));
+  } else {
+    selectedPlayerIds.clear();
+  }
   renderRoster();
+  renderMatchTab();
 }
 
 function handleBatchAdd() {
-  const txt = document.getElementById('batchNames').value.trim();
+  const txt = document.getElementById('batchNames')?.value?.trim();
   if (!txt) return;
 
   txt.split('\n').map(n => n.trim()).filter(Boolean).forEach((name, i) => {
     const defaultStats = { atk:70, srv:70, rcv:70, blk:70, stm:70, tmw:70 };
+    const newId = "p_" + Date.now() + "_" + i;
     const newP = {
-      id: "p_" + Date.now() + "_" + i,
+      id: newId,
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: ''
     };
     players.push(newP);
-    selectedPlayerIds.add(newP.id);
+    selectedPlayerIds.add(newId);
   });
 
   document.getElementById('batchNames').value = '';
   saveAll();
   renderRoster();
+  renderMatchTab();
 }
 
 // MATCHMAKING ENGINE
 function generateMatch(balanced) {
-  const pool = players.filter(p => selectedPlayerIds.has(p.id));
-  if (pool.length < 2) return alert('Select at least 2 players!');
+  const pool = players.filter(p => selectedPlayerIds.has(String(p.id)));
+  if (pool.length < 2) return alert(`Select at least 2 players! Currently selected: ${pool.length}`);
 
   let teamA = [], teamB = [];
 
   if (balanced) {
-    const sorted = [...pool].sort((a,b) => b.ovr - a.ovr);
+    const sorted = [...pool].sort((a,b) => (b.ovr || 70) - (a.ovr || 70));
     let sumA = 0, sumB = 0;
     sorted.forEach(p => {
+      const pOvr = p.ovr || 70;
       if (sumA <= sumB && teamA.length < Math.ceil(pool.length / 2)) {
-        teamA.push(p); sumA += p.ovr;
+        teamA.push(p); sumA += pOvr;
       } else {
-        teamB.push(p); sumB += p.ovr;
+        teamB.push(p); sumB += pOvr;
       }
     });
   } else {
@@ -566,8 +604,8 @@ function generateMatch(balanced) {
     teamB = shuffled.slice(mid);
   }
 
-  const avgA = Math.round(teamA.reduce((s,p) => s + p.ovr, 0) / (teamA.length || 1));
-  const avgB = Math.round(teamB.reduce((s,p) => s + p.ovr, 0) / (teamB.length || 1));
+  const avgA = Math.round(teamA.reduce((s,p) => s + (p.ovr || 70), 0) / (teamA.length || 1));
+  const avgB = Math.round(teamB.reduce((s,p) => s + (p.ovr || 70), 0) / (teamB.length || 1));
 
   currentMatchData = { teamA, teamB, avgA, avgB, mode: balanced ? 'Skill Balanced' : 'Pure Random' };
 
@@ -579,14 +617,14 @@ function generateMatch(balanced) {
 
   const boxA = document.getElementById('teamABox');
   if (boxA) {
-    boxA.innerHTML = `<h4 class="text-gold" style="color:#fbbf24; margin-bottom:8px;">Team A (Avg ${avgA})</h4>` +
-      teamA.map(p => `<div style="font-size:0.85rem; padding: 2px 0;">${p.name} (${p.ovr} OVR)</div>`).join('');
+    boxA.innerHTML = `<h4 style="color:#fbbf24; margin-bottom:8px;">Team A (Avg ${avgA})</h4>` +
+      teamA.map(p => `<div style="font-size:0.85rem; padding: 2px 0;">${p.name} (${p.ovr || 70} OVR)</div>`).join('');
   }
 
   const boxB = document.getElementById('teamBBox');
   if (boxB) {
-    boxB.innerHTML = `<h4 class="text-blue" style="color:#60a5fa; margin-bottom:8px;">Team B (Avg ${avgB})</h4>` +
-      teamB.map(p => `<div style="font-size:0.85rem; padding: 2px 0;">${p.name} (${p.ovr} OVR)</div>`).join('');
+    boxB.innerHTML = `<h4 style="color:#60a5fa; margin-bottom:8px;">Team B (Avg ${avgB})</h4>` +
+      teamB.map(p => `<div style="font-size:0.85rem; padding: 2px 0;">${p.name} (${p.ovr || 70} OVR)</div>`).join('');
   }
 
   const mvpSelect = document.getElementById('mvpSelect');
@@ -604,7 +642,7 @@ function saveMatchResult() {
   const mvpId = document.getElementById('mvpSelect')?.value;
 
   if (mvpId) {
-    const mvpPlayer = players.find(p => p.id === mvpId);
+    const mvpPlayer = players.find(p => String(p.id) === String(mvpId));
     if (mvpPlayer) mvpPlayer.mvps = (mvpPlayer.mvps || 0) + 1;
   }
 
@@ -614,7 +652,7 @@ function saveMatchResult() {
     teamA: currentMatchData.teamA.map(p => p.name),
     teamB: currentMatchData.teamB.map(p => p.name),
     scoreA, scoreB,
-    mvpName: mvpId ? players.find(p => p.id === mvpId)?.name : 'None'
+    mvpName: mvpId ? players.find(p => String(p.id) === String(mvpId))?.name : 'None'
   };
 
   matchHistory.unshift(record);

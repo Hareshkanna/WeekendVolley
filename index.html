@@ -90,7 +90,7 @@
     </div>
   </div>
 
-  <!-- 3. MATCHMAKING PAGE -->
+<!-- 3. MATCHMAKING PAGE -->
   <div id="matchTab" class="page-content">
     <div class="panel">
       <div class="panel-title">
@@ -98,10 +98,13 @@
         <span id="selectedCount" class="sub-text">0 Selected</span>
       </div>
 
-      <div class="button-group-sm">
+      <div class="button-group-sm" style="margin-bottom: 15px;">
         <button class="btn btn-sec btn-sm" onclick="selectAllPlayers(true)">Select All</button>
         <button class="btn btn-sec btn-sm" onclick="selectAllPlayers(false)">Deselect All</button>
       </div>
+
+      <!-- PLAYER SELECTION GRID IN MATCHMAKER -->
+      <div class="cards-grid" id="matchTabRosterGrid" style="margin-bottom: 20px;"></div>
 
       <div class="button-group-grid">
         <button class="btn btn-green" onclick="generateMatch(true)">⚡ Skill Balanced</button>
