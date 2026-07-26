@@ -509,12 +509,16 @@ if (document.getElementById('editCustomCardFrame')) {
 
 // CANVAS GENERATOR ENGINE
 // ADVANCED FIFA ULTIMATE TEAM CANVAS CARD GENERATOR
+// CLEAN CARD GENERATOR - NO EXTRA BORDERS OR GRAY BOXES
 function generatePlayerCardImage(p) {
   return new Promise((resolve) => {
     const canvas = document.createElement("canvas");
     canvas.width = 400;
     canvas.height = 600;
     const ctx = canvas.getContext("2d");
+
+    // Clear background transparently
+    ctx.clearRect(0, 0, 400, 600);
 
     const loadImage = (src) => new Promise((res) => {
       if (!src) return res(null);
@@ -525,146 +529,100 @@ function generatePlayerCardImage(p) {
       img.src = src;
     });
 
-    // FUT Shield Path Helper
-    const drawFutShield = (c, w, h) => {
-      c.beginPath();
-      c.moveTo(50, 20);
-      c.lineTo(w - 50, 20);
-      c.lineTo(w - 20, 60);
-      c.lineTo(w - 20, h - 90);
-      c.lineTo(w / 2, h - 20);
-      c.lineTo(20, h - 90);
-      c.lineTo(20, 60);
-      c.closePath();
-    };
-
     Promise.all([
-      loadImage(p.cardFrameUrl), // Background design or frame
-      loadImage(p.photoUrl)      // Player cutout photo
+      loadImage(p.cardFrameUrl), // Uploaded custom card template
+      loadImage(p.photoUrl)      // Player photo cutout
     ]).then(([frameImg, photoImg]) => {
 
-      // 1. CLIP TO FUT SHIELD SHAPE
-      ctx.save();
-      drawFutShield(ctx, 400, 600);
-      ctx.clip();
-
-      // 2. BACKGROUND (CUSTOM TEMPLATE OR FUT METALLIC GOLD GRADIENT)
+      // 1. DRAW CUSTOM CARD GRAPHIC DIRECTLY (NO SHIELD CLIPPING / NO BORDERS)
       if (frameImg) {
         ctx.drawImage(frameImg, 0, 0, 400, 600);
       } else {
-        // Multi-stage Metallic Gold Background
-        const goldGrad = ctx.createLinearGradient(0, 0, 400, 600);
-        goldGrad.addColorStop(0, "#fffae0");
-        goldGrad.addColorStop(0.2, "#eab308");
-        goldGrad.addColorStop(0.5, "#ca8a04");
-        goldGrad.addColorStop(0.8, "#854d0e");
-        goldGrad.addColorStop(1, "#422006");
-        ctx.fillStyle = goldGrad;
-        ctx.fill();
-
-        // Holographic Geometric Stripes
-        ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+        // Simple fallback gold background
+        const grad = ctx.createLinearGradient(0, 0, 0, 600);
+        grad.addColorStop(0, "#fef08a");
+        grad.addColorStop(0.5, "#f59e0b");
+        grad.addColorStop(1, "#78350f");
+        ctx.fillStyle = grad;
         ctx.beginPath();
-        ctx.moveTo(0, 0); ctx.lineTo(200, 0); ctx.lineTo(400, 600); ctx.lineTo(200, 600);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.moveTo(100, 0); ctx.lineTo(300, 0); ctx.lineTo(200, 600); ctx.lineTo(0, 600);
+        ctx.roundRect(15, 15, 370, 570, 24);
         ctx.fill();
       }
 
-      // 3. DRAW PLAYER CUTOUT PHOTO
+      // 2. DRAW PLAYER PHOTO CUTOUT ON TOP
       if (photoImg) {
         ctx.save();
-        ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = 15;
-        ctx.shadowOffsetY = 10;
-        ctx.drawImage(photoImg, 80, 75, 260, 260);
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowBlur = 8;
+        ctx.drawImage(photoImg, 80, 80, 250, 250);
         ctx.restore();
       }
 
-      // 4. PLAYER RATING & POSITION (TOP LEFT BADGE)
-      ctx.fillStyle = "#3a1300";
+      // TEXT COLOR FOR DETAILS
+      const textColor = "#220e02"; // Dark brown text suited for gold cards
+
+      // 3. OVERALL RATING & POSITION (TOP LEFT)
+      ctx.fillStyle = textColor;
       ctx.textAlign = "center";
-      
-      // OVR Rating
-      ctx.font = "900 58px 'Arial Black', sans-serif";
-      ctx.fillText(p.ovr || 70, 82, 115);
+
+      // Rating
+      ctx.font = "900 62px 'Arial Black', sans-serif";
+      ctx.fillText(p.ovr || 70, 85, 115);
 
       // Position
       ctx.font = "800 24px sans-serif";
-      ctx.fillText((p.pos || "OH").substring(0, 3).toUpperCase(), 82, 145);
+      ctx.fillText((p.pos || "OH").substring(0, 3).toUpperCase(), 85, 148);
 
-      // Divider Line Under Position
-      ctx.strokeStyle = "rgba(58, 19, 0, 0.4)";
+      // Position separator line
+      ctx.strokeStyle = "rgba(34, 14, 2, 0.4)";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(55, 160);
-      ctx.lineTo(110, 160);
+      ctx.lineTo(115, 160);
       ctx.stroke();
 
-      // 5. PLAYER NAME BANNER
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 4;
-      ctx.fillStyle = "#3a1300";
-      ctx.font = "900 30px 'Arial Black', sans-serif";
+      // 4. PLAYER NAME (CENTER BANNER)
+      ctx.font = "900 32px 'Arial Black', sans-serif";
       ctx.fillText((p.name || "PLAYER").toUpperCase(), 200, 355);
 
-      // Name Separator Line
-      ctx.strokeStyle = "rgba(58, 19, 0, 0.5)";
-      ctx.lineWidth = 3;
+      // Name separator line
+      ctx.strokeStyle = "rgba(34, 14, 2, 0.3)";
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(40, 370);
-      ctx.lineTo(360, 370);
+      ctx.moveTo(40, 368);
+      ctx.lineTo(360, 368);
       ctx.stroke();
 
-      // 6. DARK GLASS CONTAINER FOR STATS
-      ctx.fillStyle = "rgba(15, 23, 42, 0.45)";
-      ctx.beginPath();
-      ctx.roundRect(40, 385, 320, 155, 12);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(254, 240, 138, 0.3)";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // 7. VOLLEYBALL STATS GRID (3x2 Layout)
+      // 5. STATS DIRECTLY ON TOP OF CARD (NO GRAY CONTAINER)
       const stats = [
         { label: "ATK", val: p.stats?.atk || 70 },
-        { label: "BLK", val: p.stats?.blk || 70 },
-        { label: "SRV", val: p.stats?.srv || 70 },
         { label: "RCV", val: p.stats?.rcv || 70 },
+        { label: "BLK", val: p.stats?.blk || 70 },
         { label: "STM", val: p.stats?.stm || 70 },
+        { label: "SRV", val: p.stats?.srv || 70 },
         { label: "TMW", val: p.stats?.tmw || 70 },
       ];
 
       const col1X = 135, col2X = 275;
-      const startY = 425, rowHeight = 42;
+      const startY = 425, rowHeight = 44;
 
       stats.forEach((st, idx) => {
-        const x = idx < 3 ? col1X : col2X;
-        const y = startY + ((idx % 3) * rowHeight);
+        const x = idx % 2 === 0 ? col1X : col2X;
+        const y = startY + (Math.floor(idx / 2) * rowHeight);
 
         // Stat Value
-        ctx.fillStyle = "#fef08a";
+        ctx.fillStyle = textColor;
         ctx.textAlign = "right";
         ctx.font = "900 24px sans-serif";
         ctx.fillText(st.val, x - 8, y);
 
         // Stat Label
-        ctx.fillStyle = "#ffffff";
         ctx.textAlign = "left";
         ctx.font = "700 18px sans-serif";
         ctx.fillText(st.label, x + 2, y);
       });
 
-      ctx.restore(); // Restore clip
-
-      // 8. GOLD SHIELD BORDER OVERLAY
-      drawFutShield(ctx, 400, 600);
-      ctx.lineWidth = 8;
-      ctx.strokeStyle = "#fef08a";
-      ctx.stroke();
-
-      // Export high-res PNG string
+      // Export transparent PNG string
       resolve(canvas.toDataURL("image/png"));
     });
   });
