@@ -2,7 +2,6 @@
 let currentUser = null;
 let isAdmin = false;
 
-// Monitor login status automatically
 auth.onAuthStateChanged((user) => {
   currentUser = user;
   const badge = document.getElementById("userRoleBadge");
@@ -55,15 +54,7 @@ function handleLogout() {
 
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 
-const CARD_PRESETS = {
-  gold: { gradient: 'linear-gradient(180deg, #fef08a 0%, #f59e0b 55%, #78350f 100%)', text: '#3a1300' },
-  emerald: { gradient: 'linear-gradient(180deg, #a7f3d0 0%, #059669 55%, #064e3b 100%)', text: '#01271c' },
-  crimson: { gradient: 'linear-gradient(180deg, #fca5a5 0%, #dc2626 55%, #7f1d1d 100%)', text: '#3b0000' },
-  obsidian: { gradient: 'linear-gradient(180deg, #71717a 0%, #27272a 55%, #09090b 100%)', text: '#f4f4f5' },
-  cyan: { gradient: 'linear-gradient(180deg, #67e8f9 0%, #0891b2 55%, #164e63 100%)', text: '#041f2c' }
-};
-
-// GLOBAL APP STATE
+// GLOBAL STATE
 let players = JSON.parse(localStorage.getItem('vb_hub_players')) || [
   { id: '1', name: 'Alex Cruz', pos: 'Attacker', jersey: 7, photo: DEFAULT_AVATAR, stats: { atk:85, srv:78, rcv:70, blk:72, stm:80, tmw:82 }, ovr: 78, mvps: 2, cardTheme: 'gold' },
   { id: '2', name: 'Sam Taylor', pos: 'Setter', jersey: 12, photo: DEFAULT_AVATAR, stats: { atk:60, srv:82, rcv:88, blk:65, stm:78, tmw:92 }, ovr: 78, mvps: 1, cardTheme: 'emerald' }
@@ -82,7 +73,6 @@ let currentMatchData = null;
 let tempPhotoBase64 = null;
 let tempPlayerCardFrameBase64 = null;
 
-// EDITING & REMOVAL TRACKERS
 let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
@@ -105,7 +95,7 @@ function calcOVR(stats) {
   return Math.min(99, Math.max(1, Math.round(sum)));
 }
 
-// THEME SETTINGS
+// THEME & SETTINGS
 const BACKGROUND_PRESETS = {
   midnight: '#0b0f19',
   stadium: 'radial-gradient(circle at center, #1e3a8a 0%, #090d16 100%)',
@@ -127,7 +117,52 @@ function applySettings() {
   if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor;
 }
 
-// BACKUP & EXPORT
+function handleBgFileUpload(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      appSettings.bgCustomPhoto = reader.result;
+      saveAll();
+      applySettings();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function applyBgPreset(val) {
+  appSettings.bgPreset = val;
+  appSettings.bgCustomPhoto = '';
+  saveAll();
+  applySettings();
+}
+
+function updateAppAccent(color) {
+  appSettings.accentColor = color;
+  saveAll();
+  applySettings();
+}
+
+function handleGlobalCardDesignUpload(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      appSettings.globalCardDesignImg = reader.result;
+      saveAll();
+      renderRoster();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function clearGlobalCardDesign() {
+  appSettings.globalCardDesignImg = '';
+  saveAll();
+  renderRoster();
+}
+
+// BACKUP & RESTORE
 function exportDataBackup() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
   const downloadAnchor = document.createElement('a');
@@ -175,7 +210,7 @@ function switchTab(tabId, event) {
   if (tabId === 'settingsTab') applySettings();
 }
 
-// DASHBOARD RENDERER
+// DASHBOARD
 function renderDashboard() {
   if (document.getElementById('dashTotalPlayers')) document.getElementById('dashTotalPlayers').innerText = players.length;
   if (document.getElementById('dashTotalMatches')) document.getElementById('dashTotalMatches').innerText = matchHistory.length;
@@ -280,7 +315,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// SAVE PLAYER HANDLER
+// SAVE PLAYER
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -299,7 +334,6 @@ window.handleSavePlayer = async function(e) {
   const customFrameFile = document.getElementById("editCustomCardFrame")?.files[0];
   let directCardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || "";
 
-  // Preserve Photo
   let photoUrl = "";
   if (photoFile) photoUrl = await convertFileToBase64(photoFile);
   else if (tempPhotoBase64) photoUrl = tempPhotoBase64;
@@ -307,7 +341,6 @@ window.handleSavePlayer = async function(e) {
 
   if (isPhotoRemoved) photoUrl = "";
 
-  // Preserve Card Frame / GIF
   let cardFrameUrl = "";
   if (customFrameFile) cardFrameUrl = await convertFileToBase64(customFrameFile);
   else if (directCardUrl) cardFrameUrl = directCardUrl;
@@ -366,6 +399,7 @@ window.handleDeletePlayer = function() {
 
   if (confirm("Are you sure you want to delete this player?")) {
     players = players.filter(p => p.id !== editId);
+    selectedPlayerIds.delete(editId);
     if (window.db) {
       db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
     }
@@ -375,7 +409,7 @@ window.handleDeletePlayer = function() {
   }
 };
 
-// LISTEN TO FIRESTORE & KEEP GLOBAL ARRAY IN SYNC
+// LISTEN TO FIRESTORE ROSTER
 function listenToPlayerRoster() {
   if (!window.firebase || !firebase.firestore || !window.db) {
     renderRoster();
@@ -388,6 +422,9 @@ function listenToPlayerRoster() {
         id: doc.id,
         ...doc.data()
       }));
+      
+      // Auto-select players on first load
+      players.forEach(p => selectedPlayerIds.add(p.id));
     }
     renderRoster();
   }, err => {
@@ -396,7 +433,7 @@ function listenToPlayerRoster() {
   });
 }
 
-// RENDER ROSTER (PURE CSS OVERLAY)
+// RENDER ROSTER
 function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
@@ -410,7 +447,7 @@ function renderRoster() {
     const pId = p.id;
     const isSel = typeof selectedPlayerIds !== 'undefined' && selectedPlayerIds.has(pId);
 
-    const bgGif = p.cardFrameUrl || 'assets/frames/gold.png';
+    const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || 'assets/frames/gold.png';
     const photo = p.photoUrl || p.photo || '';
     const textColor = p.textColor || '#220e02';
     const name = (p.name || 'PLAYER').toUpperCase();
@@ -477,6 +514,139 @@ function toggleSelect(id) {
   if (selectedPlayerIds.has(id)) selectedPlayerIds.delete(id);
   else selectedPlayerIds.add(id);
   renderRoster();
+}
+
+function selectAllPlayers(val) {
+  if (val) selectedPlayerIds = new Set(players.map(p => p.id));
+  else selectedPlayerIds.clear();
+  renderRoster();
+}
+
+function handleBatchAdd() {
+  const txt = document.getElementById('batchNames').value.trim();
+  if (!txt) return;
+
+  txt.split('\n').map(n => n.trim()).filter(Boolean).forEach((name, i) => {
+    const defaultStats = { atk:70, srv:70, rcv:70, blk:70, stm:70, tmw:70 };
+    const newP = {
+      id: "p_" + Date.now() + "_" + i,
+      name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
+      photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: ''
+    };
+    players.push(newP);
+    selectedPlayerIds.add(newP.id);
+  });
+
+  document.getElementById('batchNames').value = '';
+  saveAll();
+  renderRoster();
+}
+
+// MATCHMAKING ENGINE
+function generateMatch(balanced) {
+  const pool = players.filter(p => selectedPlayerIds.has(p.id));
+  if (pool.length < 2) return alert('Select at least 2 players!');
+
+  let teamA = [], teamB = [];
+
+  if (balanced) {
+    const sorted = [...pool].sort((a,b) => b.ovr - a.ovr);
+    let sumA = 0, sumB = 0;
+    sorted.forEach(p => {
+      if (sumA <= sumB && teamA.length < Math.ceil(pool.length / 2)) {
+        teamA.push(p); sumA += p.ovr;
+      } else {
+        teamB.push(p); sumB += p.ovr;
+      }
+    });
+  } else {
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const mid = Math.ceil(shuffled.length / 2);
+    teamA = shuffled.slice(0, mid);
+    teamB = shuffled.slice(mid);
+  }
+
+  const avgA = Math.round(teamA.reduce((s,p) => s + p.ovr, 0) / (teamA.length || 1));
+  const avgB = Math.round(teamB.reduce((s,p) => s + p.ovr, 0) / (teamB.length || 1));
+
+  currentMatchData = { teamA, teamB, avgA, avgB, mode: balanced ? 'Skill Balanced' : 'Pure Random' };
+
+  const panel = document.getElementById('generatedMatchPanel');
+  if (panel) panel.style.display = 'block';
+
+  const diffEl = document.getElementById('diffIndicator');
+  if (diffEl) diffEl.innerText = `Δ ${Math.abs(avgA - avgB)} OVR (${currentMatchData.mode})`;
+
+  const boxA = document.getElementById('teamABox');
+  if (boxA) {
+    boxA.innerHTML = `<h4 class="text-gold" style="color:#fbbf24; margin-bottom:8px;">Team A (Avg ${avgA})</h4>` +
+      teamA.map(p => `<div style="font-size:0.85rem; padding: 2px 0;">${p.name} (${p.ovr} OVR)</div>`).join('');
+  }
+
+  const boxB = document.getElementById('teamBBox');
+  if (boxB) {
+    boxB.innerHTML = `<h4 class="text-blue" style="color:#60a5fa; margin-bottom:8px;">Team B (Avg ${avgB})</h4>` +
+      teamB.map(p => `<div style="font-size:0.85rem; padding: 2px 0;">${p.name} (${p.ovr} OVR)</div>`).join('');
+  }
+
+  const mvpSelect = document.getElementById('mvpSelect');
+  if (mvpSelect) {
+    mvpSelect.innerHTML = '<option value="">Select Match MVP (Optional)</option>' +
+      pool.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  }
+}
+
+function saveMatchResult() {
+  if (!currentMatchData) return;
+
+  const scoreA = Number(document.getElementById('scoreA')?.value) || 0;
+  const scoreB = Number(document.getElementById('scoreB')?.value) || 0;
+  const mvpId = document.getElementById('mvpSelect')?.value;
+
+  if (mvpId) {
+    const mvpPlayer = players.find(p => p.id === mvpId);
+    if (mvpPlayer) mvpPlayer.mvps = (mvpPlayer.mvps || 0) + 1;
+  }
+
+  const record = {
+    id: Date.now().toString(),
+    date: new Date().toLocaleDateString(),
+    teamA: currentMatchData.teamA.map(p => p.name),
+    teamB: currentMatchData.teamB.map(p => p.name),
+    scoreA, scoreB,
+    mvpName: mvpId ? players.find(p => p.id === mvpId)?.name : 'None'
+  };
+
+  matchHistory.unshift(record);
+  saveAll();
+  alert('Match saved successfully!');
+  const panel = document.getElementById('generatedMatchPanel');
+  if (panel) panel.style.display = 'none';
+}
+
+// MATCH HISTORY
+function renderHistory() {
+  const container = document.getElementById('historyContainer');
+  if (!container) return;
+
+  if (matchHistory.length === 0) {
+    container.innerHTML = '<p class="sub-text" style="color:#94a3b8;">No past matches recorded yet.</p>';
+    return;
+  }
+
+  container.innerHTML = matchHistory.map(m => `
+    <div class="history-card" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1);">
+      <div class="history-header" style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+        <span style="color: #94a3b8; font-size: 0.8rem;">${m.date}</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${m.scoreA} - ${m.scoreB}</span>
+      </div>
+      <div class="history-teams" style="font-size: 0.85rem;">
+        <div><strong style="color:#fbbf24;">Team A:</strong> ${m.teamA.join(', ')}</div>
+        <div><strong style="color:#60a5fa;">Team B:</strong> ${m.teamB.join(', ')}</div>
+      </div>
+      ${m.mvpName !== 'None' ? `<div class="mvp-badge" style="margin-top: 6px; font-size: 0.8rem; color: #fbbf24;">⭐ MVP: ${m.mvpName}</div>` : ''}
+    </div>
+  `).join('');
 }
 
 function convertFileToBase64(file) {
