@@ -318,11 +318,11 @@ function renderRoster() {
           </div>
 
           <!-- Edit Action Button (ONLY VISIBLE IF ADMIN) -->
-          ${isAdmin ? `
-            <div class="fut-card-actions">
-              <button onclick="event.stopPropagation(); openPlayerModal('${p.id}')" class="btn btn-sec btn-sm">Edit Card</button>
-            </div>
-          ` : ''}
+            ${isAdmin ? `
+             <div class="fut-card-actions">
+             <button onclick="event.stopPropagation(); openPlayerModal('${p.id}')" class="btn btn-sec btn-sm">Edit Card</button>
+                </div>
+               ` : ''}
 
         </div>
       </div>
