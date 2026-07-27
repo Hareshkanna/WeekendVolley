@@ -51,6 +51,7 @@ window.handleLogout = function() {
 };
 
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
+const DEFAULT_CARD_FRAME = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><defs><linearGradient id='gold' x1='0%25' y1='0%25' x2='0%25' y2='100%25'><stop offset='0%25' stop-color='%23fef08a'/><stop offset='50%25' stop-color='%23f59e0b'/><stop offset='100%25' stop-color='%2378350f'/></linearGradient></defs><rect width='200' height='300' rx='16' fill='url(%23gold)' stroke='%23fef08a' stroke-width='4'/></svg>";
 
 // GLOBAL APP STATE
 let players = [];
@@ -80,7 +81,7 @@ function renderAllViews() {
   applySettings();
 }
 
-// SAVE MATCH HISTORY & SETTINGS TO FIREBASE + LOCALSTORAGE
+// SAVE APP SETTINGS & HISTORY
 function saveAllAppData() {
   localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
   localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
@@ -183,38 +184,6 @@ window.clearGlobalCardDesign = function() {
   saveAllAppData();
   renderRoster();
   renderMatchTab();
-};
-
-// BACKUP & RESTORE
-window.exportDataBackup = function() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
-  const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `volleyball_hub_backup_${new Date().toISOString().slice(0,10)}.json`);
-  document.body.appendChild(downloadAnchor);
-  downloadAnchor.click();
-  downloadAnchor.remove();
-};
-
-window.importDataBackup = function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    try {
-      const parsed = JSON.parse(event.target.result);
-      if (parsed.players) players = parsed.players;
-      if (parsed.matchHistory) matchHistory = parsed.matchHistory;
-      if (parsed.appSettings) appSettings = parsed.appSettings;
-      saveAllAppData();
-      renderAllViews();
-      alert('Backup restored successfully!');
-    } catch (err) {
-      alert('Invalid backup JSON file.');
-    }
-  };
-  reader.readAsText(file);
 };
 
 // DASHBOARD RENDERER
@@ -322,7 +291,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// SAVE PLAYER (INSTANT + FIREBASE REAL-TIME SYNC)
+// SAVE PLAYER TO FIRESTORE
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -376,25 +345,17 @@ window.handleSavePlayer = async function(e) {
     updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
   };
 
-  // 1. Instantly update local array & UI
-  const idx = players.findIndex(p => String(p.id) === String(editId));
-  if (idx >= 0) {
-    players[idx] = { ...players[idx], ...playerData };
-  } else {
-    players.push(playerData);
-  }
-  selectedPlayerIds.add(String(editId));
-
-  closePlayerModal();
-  renderAllViews();
-
-  // 2. Sync to Firestore (Pushes update live to all other devices)
   if (window.db) {
-    db.collection("players").doc(String(editId)).set(playerData, { merge: true })
-      .catch(err => {
-        console.error("Firestore Save Error:", err);
-        alert("Card updated locally, but cloud save failed: " + err.message);
-      });
+    try {
+      await db.collection("players").doc(String(editId)).set(playerData, { merge: true });
+      closePlayerModal();
+      alert("✅ Player card saved to cloud successfully!");
+    } catch (err) {
+      console.error("Firestore Save Error:", err);
+      alert("❌ Failed to save to cloud: " + err.message);
+    }
+  } else {
+    alert("❌ Error: Firestore Database connection not found.");
   }
 };
 
@@ -408,14 +369,13 @@ window.handleDeletePlayer = function() {
   if (!editId) return;
 
   if (confirm("Are you sure you want to delete this player?")) {
-    players = players.filter(p => String(p.id) !== String(editId));
-    selectedPlayerIds.delete(String(editId));
-
-    closePlayerModal();
-    renderAllViews();
-
     if (window.db) {
-      db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
+      db.collection("players").doc(editId).delete()
+        .then(() => {
+          closePlayerModal();
+          alert("Player deleted successfully!");
+        })
+        .catch(e => alert("Delete failed: " + e.message));
     }
   }
 };
@@ -432,8 +392,6 @@ window.handleBatchAdd = function() {
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: ''
     };
-    players.push(newP);
-    selectedPlayerIds.add(newId);
 
     if (window.db) {
       db.collection("players").doc(newId).set(newP);
@@ -441,14 +399,13 @@ window.handleBatchAdd = function() {
   });
 
   document.getElementById('batchNames').value = '';
-  renderAllViews();
 };
 
-// LIVE LISTENERS FOR ALL FIREBASE DATA (PLAYERS & MATCH HISTORY)
+// LIVE CLOUD LISTENERS
 function listenToCloudData() {
   if (!window.firebase || !firebase.firestore || !window.db) return;
 
-  // 1. LIVE PLAYER ROSTER LISTENER
+  // 1. LIVE PLAYERS LISTENER
   db.collection("players").onSnapshot(snapshot => {
     if (snapshot && !snapshot.empty) {
       players = snapshot.docs.map(doc => ({
@@ -457,13 +414,15 @@ function listenToCloudData() {
       }));
       
       players.forEach(p => selectedPlayerIds.add(String(p.id)));
+    } else {
+      players = [];
     }
     renderRoster();
     renderMatchTab();
     renderDashboard();
   }, err => console.error("Roster snapshot error:", err));
 
-  // 2. LIVE MATCH HISTORY & SETTINGS LISTENER
+  // 2. LIVE MATCH HISTORY LISTENER
   db.collection("appData").doc("roster").onSnapshot(doc => {
     if (doc.exists) {
       const data = doc.data();
@@ -484,7 +443,7 @@ function listenToCloudData() {
 
 // CARD BUILDER TEMPLATE
 function createCardHTML(p, pId, isSel, showEditButton = true) {
-  const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || 'assets/frames/gold.png';
+  const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
   const textColor = p.textColor || '#220e02';
   const name = (p.name || 'PLAYER').toUpperCase();
@@ -505,7 +464,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
         <!-- LAYER 1: CARD BACKGROUND FRAME -->
         <img src="${bgGif}" alt="Card Frame" 
              style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;"
-             onerror="this.onerror=null; this.src='assets/frames/gold.png';">
+             onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
 
         <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
         ${photo ? `
@@ -653,7 +612,6 @@ window.generateMatch = function(balanced) {
   }
 };
 
-// SAVE MATCH RESULT (FIREBASE SYNC)
 window.saveMatchResult = function() {
   if (!currentMatchData) return;
 
@@ -713,11 +671,47 @@ function renderHistory() {
   `).join('');
 }
 
+// HIGH-EFFICIENCY IMAGE COMPRESSION (PNG CUTOUT FRIENDLY)
 function convertFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
+    reader.onload = (event) => {
+      // Keep animated GIFs and SVGs as raw data URLs
+      if (file.type.includes("gif") || file.type.includes("svg")) {
+        return resolve(event.target.result);
+      }
+
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // 200px max dimension produces super lightweight PNGs (~20KB-30KB) that fit comfortably in Firebase
+        const maxDim = 200;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Preserves transparency for cutouts while outputting ultra-lightweight Base64 PNGs
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(event.target.result);
+    };
     reader.onerror = (error) => reject(error);
   });
 }
