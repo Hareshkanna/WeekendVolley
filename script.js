@@ -20,13 +20,7 @@ auth.onAuthStateChanged((user) => {
     if (logoutBtn) logoutBtn.style.display = "none";
   }
   
-<<<<<<< HEAD
   renderAllViews();
-=======
-  renderRoster();
-  renderMatchTab();
-  renderDashboard();
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
 });
 
 window.openLoginModal = function() {
@@ -77,7 +71,6 @@ let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
 
-<<<<<<< HEAD
 // REFRESH ALL UI TAB VIEWS
 function renderAllViews() {
   renderRoster();
@@ -89,23 +82,15 @@ function renderAllViews() {
 
 // SAVE MATCH HISTORY & SETTINGS TO FIREBASE + LOCALSTORAGE
 function saveAllAppData() {
-=======
-function saveAll() {
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
   localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
   localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
 
   if (!window.db) return;
   db.collection("appData").doc("roster").set({
     matchHistory: matchHistory,
-<<<<<<< HEAD
     appSettings: appSettings,
     updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
   }, { merge: true }).catch((err) => console.error("Cloud AppData Save Error: ", err));
-=======
-    appSettings: appSettings
-  }).catch((err) => console.error("Cloud AppData Save Error: ", err));
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
 }
 
 function calcOVR(stats) {
@@ -219,7 +204,7 @@ window.importDataBackup = function(e) {
   reader.onload = function(event) {
     try {
       const parsed = JSON.parse(event.target.result);
-      if (parsed.players) players = parsed.parsed;
+      if (parsed.players) players = parsed.players;
       if (parsed.matchHistory) matchHistory = parsed.matchHistory;
       if (parsed.appSettings) appSettings = parsed.appSettings;
       saveAllAppData();
@@ -337,11 +322,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-<<<<<<< HEAD
 // SAVE PLAYER (INSTANT + FIREBASE REAL-TIME SYNC)
-=======
-// SAVE PLAYER (OPTIMISTIC IMMEDIATE RENDER)
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -395,11 +376,7 @@ window.handleSavePlayer = async function(e) {
     updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
   };
 
-<<<<<<< HEAD
   // 1. Instantly update local array & UI
-=======
-  // 1. Instantly update local array
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
   const idx = players.findIndex(p => String(p.id) === String(editId));
   if (idx >= 0) {
     players[idx] = { ...players[idx], ...playerData };
@@ -408,20 +385,10 @@ window.handleSavePlayer = async function(e) {
   }
   selectedPlayerIds.add(String(editId));
 
-<<<<<<< HEAD
   closePlayerModal();
   renderAllViews();
 
   // 2. Sync to Firestore (Pushes update live to all other devices)
-=======
-  // 2. Immediately update screen UI & close modal
-  closePlayerModal();
-  renderRoster();
-  renderMatchTab();
-  renderDashboard();
-
-  // 3. Sync to Firestore in background
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
   if (window.db) {
     db.collection("players").doc(String(editId)).set(playerData, { merge: true })
       .catch(err => {
@@ -445,13 +412,7 @@ window.handleDeletePlayer = function() {
     selectedPlayerIds.delete(String(editId));
 
     closePlayerModal();
-<<<<<<< HEAD
     renderAllViews();
-=======
-    renderRoster();
-    renderMatchTab();
-    renderDashboard();
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
 
     if (window.db) {
       db.collection("players").doc(editId).delete().catch(e => console.error("Error deleting doc:", e));
@@ -480,21 +441,11 @@ window.handleBatchAdd = function() {
   });
 
   document.getElementById('batchNames').value = '';
-<<<<<<< HEAD
   renderAllViews();
 };
 
 // LIVE LISTENERS FOR ALL FIREBASE DATA (PLAYERS & MATCH HISTORY)
 function listenToCloudData() {
-=======
-  renderRoster();
-  renderMatchTab();
-  renderDashboard();
-};
-
-// LISTEN TO FIRESTORE ROSTER
-function listenToPlayerRoster() {
->>>>>>> ddb2d2ec72742c0670be2026178e587ad8683327
   if (!window.firebase || !firebase.firestore || !window.db) return;
 
   // 1. LIVE PLAYER ROSTER LISTENER
