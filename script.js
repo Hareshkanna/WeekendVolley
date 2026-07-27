@@ -244,7 +244,7 @@ window.removeUploadedPhoto = function() {
   if (photoInput) photoInput.value = "";
   tempPhotoBase64 = "";
   isPhotoRemoved = true;
-  alert("Photo cleared! Click 'Save Card' to confirm.");
+  updateModalPreview();
 };
 
 window.removeUploadedCardDesign = function() {
@@ -254,7 +254,49 @@ window.removeUploadedCardDesign = function() {
   if (urlInput) urlInput.value = "";
   tempPlayerCardFrameBase64 = "";
   isCardFrameRemoved = true;
-  alert("Card template cleared! Click 'Save Card' to confirm.");
+  updateModalPreview();
+};
+
+// LIVE CARD CREATOR PREVIEW UPDATER (FIFAROSTERS STYLE)
+window.updateModalPreview = function() {
+  const previewBox = document.getElementById("cardCreatorLivePreview");
+  if (!previewBox) return;
+
+  const name = document.getElementById("editName")?.value || "PLAYER";
+  const pos = document.getElementById("editPos")?.value || "OH";
+  const jersey = document.getElementById("editJersey")?.value || "0";
+  const textColor = document.getElementById("editTextColor")?.value || "#220e02";
+  const cardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || tempPlayerCardFrameBase64 || (currentEditingPlayer && !isCardFrameRemoved ? currentEditingPlayer.cardFrameUrl : "");
+  const hasShine = document.getElementById("editShineToggle")?.checked || false;
+  const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
+
+  const stats = {
+    atk: parseInt(document.getElementById("statAtk")?.value) || 70,
+    srv: parseInt(document.getElementById("statSrv")?.value) || 70,
+    rcv: parseInt(document.getElementById("statRcv")?.value) || 70,
+    blk: parseInt(document.getElementById("statBlk")?.value) || 70,
+    stm: parseInt(document.getElementById("statStm")?.value) || 70,
+    tmw: parseInt(document.getElementById("statTmw")?.value) || 70
+  };
+
+  const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
+
+  let photo = tempPhotoBase64;
+  if (!photo && currentEditingPlayer && !isPhotoRemoved) {
+    photo = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
+  }
+
+  const dummyP = {
+    id: "preview",
+    name, pos, jersey, stats, ovr,
+    photoUrl: photo,
+    cardFrameUrl: cardUrl,
+    textColor,
+    hasShine,
+    featureBadge
+  };
+
+  previewBox.innerHTML = createCardHTML(dummyP, "preview", false, false);
 };
 
 window.openPlayerModal = function(id = null) {
@@ -275,6 +317,8 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editJersey")) document.getElementById("editJersey").value = currentEditingPlayer.jersey || "0";
       if (document.getElementById("editTextColor")) document.getElementById("editTextColor").value = currentEditingPlayer.textColor || "#220e02";
       if (document.getElementById("editCardImageUrl")) document.getElementById("editCardImageUrl").value = currentEditingPlayer.cardFrameUrl || "";
+      if (document.getElementById("editShineToggle")) document.getElementById("editShineToggle").checked = !!currentEditingPlayer.hasShine;
+      if (document.getElementById("editFeatureBadge")) document.getElementById("editFeatureBadge").value = currentEditingPlayer.featureBadge || "";
 
       if (currentEditingPlayer.stats) {
         if (document.getElementById("statAtk")) document.getElementById("statAtk").value = currentEditingPlayer.stats.atk || 70;
@@ -294,9 +338,10 @@ window.openPlayerModal = function(id = null) {
   }
 
   modal.style.display = "block";
+  updateModalPreview();
 };
 
-// SAVE PLAYER
+// SAVE PLAYER (CLOUD WRITE)
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -306,6 +351,8 @@ window.handleSavePlayer = async function(e) {
   const pos = document.getElementById("editPos")?.value?.trim() || "OH";
   const jersey = document.getElementById("editJersey")?.value || "0";
   const textColor = document.getElementById("editTextColor")?.value || "#220e02";
+  const hasShine = document.getElementById("editShineToggle")?.checked || false;
+  const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
 
   const photoFile = document.getElementById("editPhoto")?.files[0];
   const customFrameFile = document.getElementById("editCustomCardFrame")?.files[0];
@@ -313,11 +360,13 @@ window.handleSavePlayer = async function(e) {
 
   let photoUrl = "";
   if (photoFile) photoUrl = await convertFileToBase64(photoFile);
+  else if (tempPhotoBase64) photoUrl = tempPhotoBase64;
   else if (currentEditingPlayer && !isPhotoRemoved) photoUrl = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
 
   let cardFrameUrl = "";
   if (customFrameFile) cardFrameUrl = await convertFileToBase64(customFrameFile);
   else if (directCardUrl) cardFrameUrl = directCardUrl;
+  else if (tempPlayerCardFrameBase64) cardFrameUrl = tempPlayerCardFrameBase64;
   else if (currentEditingPlayer && !isCardFrameRemoved) cardFrameUrl = currentEditingPlayer.cardFrameUrl || "";
 
   const stats = {
@@ -341,6 +390,8 @@ window.handleSavePlayer = async function(e) {
     photoUrl: String(photoUrl),
     cardFrameUrl: String(cardFrameUrl),
     textColor: String(textColor),
+    hasShine: Boolean(hasShine),
+    featureBadge: String(featureBadge),
     mvps: currentEditingPlayer ? Number(currentEditingPlayer.mvps || 0) : 0,
     updatedAt: new Date().toISOString()
   };
@@ -354,7 +405,7 @@ window.handleSavePlayer = async function(e) {
   try {
     await firestore.collection("players").doc(String(editId)).set(playerData, { merge: true });
     closePlayerModal();
-    alert("✅ Saved to cloud! Refreshing will now keep this card.");
+    alert("✅ Card saved to cloud successfully!");
   } catch (err) {
     console.error("❌ FIRESTORE WRITE FAILED:", err);
     alert("❌ Firestore write error: " + err.message);
@@ -439,7 +490,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// CLEAN CARD BUILDER (SINGLE CARD CONTAINER + PRECISE INLINE TEXT BOUNDS)
+// FIFAROSTERS-STYLE CARD HTML GENERATOR
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
@@ -448,10 +499,12 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
   const pos = (p.pos || 'OH').substring(0, 3).toUpperCase();
   const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
   const ovr = p.ovr || 70;
+  const badge = p.featureBadge || '';
+  const shine = p.hasShine;
 
   const borderStyle = isSel 
     ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
-    : 'opacity: 0.85;';
+    : 'opacity: 0.95;';
 
   return `
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
@@ -462,25 +515,31 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
            style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px;" 
            onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
 
-      <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
-      ${photo ? `
-        <img src="${photo}" alt="${name}" 
-             style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 2;">
+      <!-- LAYER 2: SHINE / GLOSS OVERLAY EFFECT -->
+      ${shine ? `
+        <div style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 2; pointer-events: none; border-radius: 12px; background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.15) 100%);"></div>
       ` : ''}
 
-      <!-- LAYER 3: OVR RATING & POSITION -->
-      <div style="position: absolute; top: 22px; left: 24px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
+      <!-- LAYER 3: PLAYER CUTOUT PHOTO -->
+      ${photo ? `
+        <img src="${photo}" alt="${name}" 
+             style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3;">
+      ` : ''}
+
+      <!-- LAYER 4: OVR RATING, POSITION & BADGE -->
+      <div style="position: absolute; top: 22px; left: 22px; z-index: 4; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
         <div style="font-size: 26px; font-weight: 900; line-height: 1;">${ovr}</div>
         <div style="font-size: 11px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
+        ${badge ? `<div style="font-size: 14px; margin-top: 4px;">${badge}</div>` : ''}
       </div>
 
-      <!-- LAYER 4: PLAYER NAME -->
-      <div style="position: absolute; top: 168px; left: 10px; right: 10px; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 13px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+      <!-- LAYER 5: PLAYER NAME -->
+      <div style="position: absolute; top: 168px; left: 10px; right: 10px; text-align: center; z-index: 4; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 13px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
         ${name}
       </div>
 
-      <!-- LAYER 5: STATS GRID -->
-      <div style="position: absolute; top: 205px; left: 28px; right: 28px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${textColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
+      <!-- LAYER 6: VOLLEYBALL STATS GRID -->
+      <div style="position: absolute; top: 205px; left: 28px; right: 28px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${textColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
         <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">ATK</span></div>
         <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">RCV</span></div>
         <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">BLK</span></div>
@@ -489,7 +548,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
         <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">TMW</span></div>
       </div>
 
-      <!-- LAYER 6: EDIT BUTTON -->
+      <!-- LAYER 7: EDIT BUTTON -->
       ${showEditButton ? `
         <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
                 style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 75%; padding: 2px 4px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
@@ -711,4 +770,11 @@ document.addEventListener("DOMContentLoaded", () => {
   listenToCloudData();
   applySettings();
   renderDashboard();
+
+  // Attach live input listeners for Fifarosters-style live previewing
+  const form = document.getElementById("playerForm");
+  if (form) {
+    form.addEventListener("input", () => window.updateModalPreview());
+    form.addEventListener("change", () => window.updateModalPreview());
+  }
 });
