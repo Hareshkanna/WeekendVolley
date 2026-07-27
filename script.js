@@ -156,9 +156,105 @@ function applySettings() {
   if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor;
 }
 
+window.handleBgFileUpload = function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      appSettings.bgCustomPhoto = reader.result;
+      saveAllAppData();
+      applySettings();
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+window.applyBgPreset = function(val) {
+  appSettings.bgPreset = val;
+  appSettings.bgCustomPhoto = '';
+  saveAllAppData();
+  applySettings();
+};
+
+window.updateAppAccent = function(color) {
+  appSettings.accentColor = color;
+  saveAllAppData();
+  applySettings();
+};
+
+window.handleGlobalCardDesignUpload = function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      appSettings.globalCardDesignImg = reader.result;
+      saveAllAppData();
+      renderRoster();
+      renderMatchTab();
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+window.clearGlobalCardDesign = function() {
+  appSettings.globalCardDesignImg = '';
+  saveAllAppData();
+  renderRoster();
+  renderMatchTab();
+};
+
+window.exportDataBackup = function() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `volleyball_hub_backup_${new Date().toISOString().slice(0,10)}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+};
+
+window.importDataBackup = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const parsed = JSON.parse(event.target.result);
+      if (parsed.players) players = parsed.players;
+      if (parsed.matchHistory) matchHistory = parsed.matchHistory;
+      if (parsed.appSettings) appSettings = parsed.appSettings;
+      saveAllAppData();
+      renderAllViews();
+      alert('Backup restored successfully!');
+    } catch (err) {
+      alert('Invalid backup JSON file.');
+    }
+  };
+  reader.readAsText(file);
+};
+
 window.closePlayerModal = function() {
   const modal = document.getElementById("playerModal");
   if (modal) modal.style.display = "none";
+};
+
+window.removeUploadedPhoto = function() {
+  const photoInput = document.getElementById("editPhoto");
+  if (photoInput) photoInput.value = "";
+  tempPhotoBase64 = "";
+  isPhotoRemoved = true;
+  alert("Photo cleared! Click 'Save Card' to confirm.");
+};
+
+window.removeUploadedCardDesign = function() {
+  const frameInput = document.getElementById("editCustomCardFrame");
+  const urlInput = document.getElementById("editCardImageUrl");
+  if (frameInput) frameInput.value = "";
+  if (urlInput) urlInput.value = "";
+  tempPlayerCardFrameBase64 = "";
+  isCardFrameRemoved = true;
+  alert("Card template cleared! Click 'Save Card' to confirm.");
 };
 
 window.openPlayerModal = function(id = null) {
@@ -343,7 +439,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// CARD BUILDER TEMPLATE
+// CLEAN CARD BUILDER (SINGLE CARD CONTAINER + PRECISE INLINE TEXT BOUNDS)
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
@@ -353,31 +449,52 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
   const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
   const ovr = p.ovr || 70;
 
-  const outlineStyle = isSel 
-    ? 'border: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7);' 
-    : 'border: 3px solid transparent; border-radius: 12px; opacity: 0.6;';
+  const borderStyle = isSel 
+    ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
+    : 'opacity: 0.85;';
 
   return `
-    <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
-         style="display:inline-block; margin: 8px; cursor: pointer; user-select: none; transition: all 0.2s ease; ${outlineStyle}">
-      <div style="position: relative; width: 200px; height: 300px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));">
-        <img src="${bgGif}" alt="Card Frame" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;" onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
-        ${photo ? `<img src="${photo}" alt="${name}" style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 2;">` : ''}
-        <div style="position: absolute; top: 20px; left: 22px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
-          <div style="font-size: 28px; font-weight: 900; line-height: 1;">${ovr}</div>
-          <div style="font-size: 11px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
-        </div>
-        <div style="position: absolute; top: 170px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 14px; letter-spacing: 0.5px;">${name}</div>
-        <div style="position: absolute; top: 210px; left: 30px; right: 30px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${textColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
-          <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">ATK</span></div>
-          <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">RCV</span></div>
-          <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">BLK</span></div>
-          <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">STM</span></div>
-          <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">SRV</span></div>
-          <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">TMW</span></div>
-        </div>
-        ${showEditButton ? `<button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 80%; padding: 3px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>` : ''}
+    <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
+         style="position: relative; width: 200px; height: 300px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
+      
+      <!-- LAYER 1: CARD BACKGROUND FRAME -->
+      <img src="${bgGif}" alt="Card Frame" 
+           style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px;" 
+           onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
+
+      <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
+      ${photo ? `
+        <img src="${photo}" alt="${name}" 
+             style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 2;">
+      ` : ''}
+
+      <!-- LAYER 3: OVR RATING & POSITION -->
+      <div style="position: absolute; top: 22px; left: 24px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
+        <div style="font-size: 26px; font-weight: 900; line-height: 1;">${ovr}</div>
+        <div style="font-size: 11px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
       </div>
+
+      <!-- LAYER 4: PLAYER NAME -->
+      <div style="position: absolute; top: 168px; left: 10px; right: 10px; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 13px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        ${name}
+      </div>
+
+      <!-- LAYER 5: STATS GRID -->
+      <div style="position: absolute; top: 205px; left: 28px; right: 28px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${textColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
+        <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">ATK</span></div>
+        <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">RCV</span></div>
+        <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">BLK</span></div>
+        <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">STM</span></div>
+        <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">SRV</span></div>
+        <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">TMW</span></div>
+      </div>
+
+      <!-- LAYER 6: EDIT BUTTON -->
+      ${showEditButton ? `
+        <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
+                style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 75%; padding: 2px 4px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
+      ` : ''}
+
     </div>
   `;
 }
