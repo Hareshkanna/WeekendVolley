@@ -35,8 +35,8 @@ window.closeLoginModal = function() {
 
 window.handleLogin = function(e) {
   if (e) e.preventDefault();
-  const email = document.getElementById("loginEmail")?.value;
-  const pass = document.getElementById("loginPassword")?.value;
+  const email = document.getElementById("loginEmail")?.value || "";
+  const pass = document.getElementById("loginPassword")?.value || "";
 
   auth.signInWithEmailAndPassword(email, pass)
     .then(() => closeLoginModal())
@@ -81,7 +81,7 @@ function renderAllViews() {
   applySettings();
 }
 
-// SAVE APP SETTINGS & HISTORY
+// SAVE APP SETTINGS & MATCH HISTORY TO FIREBASE + LOCALSTORAGE
 function saveAllAppData() {
   localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
   localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
@@ -90,7 +90,7 @@ function saveAllAppData() {
   db.collection("appData").doc("roster").set({
     matchHistory: matchHistory,
     appSettings: appSettings,
-    updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+    updatedAt: new Date().toISOString()
   }, { merge: true }).catch((err) => console.error("Cloud AppData Save Error: ", err));
 }
 
@@ -101,7 +101,7 @@ function calcOVR(stats) {
   return Math.min(99, Math.max(1, Math.round(sum)));
 }
 
-// NAVIGATION SYSTEM
+// TAB SWITCHING & NAVIGATION
 window.switchTab = function(tabId, event) {
   document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -186,6 +186,38 @@ window.clearGlobalCardDesign = function() {
   renderMatchTab();
 };
 
+// BACKUP & RESTORE
+window.exportDataBackup = function() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `volleyball_hub_backup_${new Date().toISOString().slice(0,10)}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+};
+
+window.importDataBackup = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const parsed = JSON.parse(event.target.result);
+      if (parsed.players) players = parsed.players;
+      if (parsed.matchHistory) matchHistory = parsed.matchHistory;
+      if (parsed.appSettings) appSettings = parsed.appSettings;
+      saveAllAppData();
+      renderAllViews();
+      alert('Backup restored successfully!');
+    } catch (err) {
+      alert('Invalid backup JSON file.');
+    }
+  };
+  reader.readAsText(file);
+};
+
 // DASHBOARD RENDERER
 function renderDashboard() {
   if (document.getElementById('dashTotalPlayers')) document.getElementById('dashTotalPlayers').innerText = players.length;
@@ -242,11 +274,6 @@ window.removeUploadedCardDesign = function() {
 };
 
 window.openPlayerModal = function(id = null) {
-  if (!isAdmin) {
-    alert("Permission denied. Only Admins can edit/add players.");
-    return;
-  }
-
   isPhotoRemoved = false;
   isCardFrameRemoved = false;
   tempPhotoBase64 = "";
@@ -258,7 +285,7 @@ window.openPlayerModal = function(id = null) {
   if (id) {
     currentEditingPlayer = players.find(p => String(p.id) === String(id)) || null;
     if (currentEditingPlayer) {
-      if (document.getElementById("editId")) document.getElementById("editId").value = currentEditingPlayer.id;
+      if (document.getElementById("editId")) document.getElementById("editId").value = currentEditingPlayer.id || "";
       if (document.getElementById("editName")) document.getElementById("editName").value = currentEditingPlayer.name || "";
       if (document.getElementById("editPos")) document.getElementById("editPos").value = currentEditingPlayer.pos || "OH";
       if (document.getElementById("editJersey")) document.getElementById("editJersey").value = currentEditingPlayer.jersey || "0";
@@ -272,12 +299,6 @@ window.openPlayerModal = function(id = null) {
         if (document.getElementById("statBlk")) document.getElementById("statBlk").value = currentEditingPlayer.stats.blk || 70;
         if (document.getElementById("statStm")) document.getElementById("statStm").value = currentEditingPlayer.stats.stm || 70;
         if (document.getElementById("statTmw")) document.getElementById("statTmw").value = currentEditingPlayer.stats.tmw || 70;
-
-        ['Atk', 'Srv', 'Rcv', 'Blk', 'Stm', 'Tmw'].forEach(s => {
-          const lbl = document.getElementById(`lbl${s}`);
-          const input = document.getElementById(`stat${s}`);
-          if (lbl && input) lbl.innerText = input.value;
-        });
       }
     }
   } else {
@@ -291,14 +312,9 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// SAVE PLAYER TO FIRESTORE
+// DIRECT FIRESTORE WRITE HANDLER
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
-
-  if (!isAdmin) {
-    alert("Permission denied. Only Admins can save players.");
-    return;
-  }
 
   const rawId = document.getElementById("editId")?.value;
   const editId = (rawId && rawId.trim() !== "") ? rawId.trim() : "p_" + Date.now();
@@ -313,64 +329,60 @@ window.handleSavePlayer = async function(e) {
 
   let photoUrl = "";
   if (photoFile) photoUrl = await convertFileToBase64(photoFile);
-  else if (tempPhotoBase64) photoUrl = tempPhotoBase64;
   else if (currentEditingPlayer && !isPhotoRemoved) photoUrl = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
-
-  if (isPhotoRemoved) photoUrl = "";
 
   let cardFrameUrl = "";
   if (customFrameFile) cardFrameUrl = await convertFileToBase64(customFrameFile);
   else if (directCardUrl) cardFrameUrl = directCardUrl;
-  else if (tempPlayerCardFrameBase64) cardFrameUrl = tempPlayerCardFrameBase64;
   else if (currentEditingPlayer && !isCardFrameRemoved) cardFrameUrl = currentEditingPlayer.cardFrameUrl || "";
 
-  if (isCardFrameRemoved) cardFrameUrl = "";
-
   const stats = {
-    atk: parseInt(document.getElementById("statAtk")?.value || 70),
-    srv: parseInt(document.getElementById("statSrv")?.value || 70),
-    rcv: parseInt(document.getElementById("statRcv")?.value || 70),
-    blk: parseInt(document.getElementById("statBlk")?.value || 70),
-    stm: parseInt(document.getElementById("statStm")?.value || 70),
-    tmw: parseInt(document.getElementById("statTmw")?.value || 70)
+    atk: parseInt(document.getElementById("statAtk")?.value) || 70,
+    srv: parseInt(document.getElementById("statSrv")?.value) || 70,
+    rcv: parseInt(document.getElementById("statRcv")?.value) || 70,
+    blk: parseInt(document.getElementById("statBlk")?.value) || 70,
+    stm: parseInt(document.getElementById("statStm")?.value) || 70,
+    tmw: parseInt(document.getElementById("statTmw")?.value) || 70
   };
 
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
   const playerData = {
     id: String(editId),
-    name, pos, jersey, stats, ovr,
-    photoUrl, cardFrameUrl, textColor,
-    mvps: currentEditingPlayer ? (currentEditingPlayer.mvps || 0) : 0,
-    updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date().toISOString()
+    name: String(name),
+    pos: String(pos),
+    jersey: String(jersey),
+    stats: stats,
+    ovr: Number(ovr),
+    photoUrl: String(photoUrl),
+    cardFrameUrl: String(cardFrameUrl),
+    textColor: String(textColor),
+    mvps: currentEditingPlayer ? Number(currentEditingPlayer.mvps || 0) : 0,
+    updatedAt: new Date().toISOString()
   };
 
-  if (window.db) {
-    try {
-      await db.collection("players").doc(String(editId)).set(playerData, { merge: true });
-      closePlayerModal();
-      alert("✅ Player card saved to cloud successfully!");
-    } catch (err) {
-      console.error("Firestore Save Error:", err);
-      alert("❌ Failed to save to cloud: " + err.message);
-    }
-  } else {
-    alert("❌ Error: Firestore Database connection not found.");
+  if (!window.db) {
+    alert("❌ Error: Firestore Database object (window.db) is missing!");
+    return;
+  }
+
+  try {
+    await db.collection("players").doc(String(editId)).set(playerData, { merge: true });
+    closePlayerModal();
+    alert("✅ Saved to cloud! Refreshing will now keep this card.");
+  } catch (err) {
+    console.error("❌ FIRESTORE WRITE FAILED:", err);
+    alert("❌ Firestore write error: " + err.message);
   }
 };
 
 window.handleDeletePlayer = function() {
-  if (!isAdmin) {
-    alert("Permission denied. Only Admins can delete players.");
-    return;
-  }
-
   const editId = document.getElementById("editId")?.value;
   if (!editId) return;
 
   if (confirm("Are you sure you want to delete this player?")) {
     if (window.db) {
-      db.collection("players").doc(editId).delete()
+      db.collection("players").doc(String(editId)).delete()
         .then(() => {
           closePlayerModal();
           alert("Player deleted successfully!");
@@ -401,18 +413,16 @@ window.handleBatchAdd = function() {
   document.getElementById('batchNames').value = '';
 };
 
-// LIVE CLOUD LISTENERS
+// REALTIME CLOUD LISTENERS
 function listenToCloudData() {
   if (!window.firebase || !firebase.firestore || !window.db) return;
 
-  // 1. LIVE PLAYERS LISTENER
   db.collection("players").onSnapshot(snapshot => {
     if (snapshot && !snapshot.empty) {
       players = snapshot.docs.map(doc => ({
         ...doc.data(),
         id: String(doc.id)
       }));
-      
       players.forEach(p => selectedPlayerIds.add(String(p.id)));
     } else {
       players = [];
@@ -422,7 +432,6 @@ function listenToCloudData() {
     renderDashboard();
   }, err => console.error("Roster snapshot error:", err));
 
-  // 2. LIVE MATCH HISTORY LISTENER
   db.collection("appData").doc("roster").onSnapshot(doc => {
     if (doc.exists) {
       const data = doc.data();
@@ -441,7 +450,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// CARD BUILDER TEMPLATE
+// CARD HTML GENERATOR
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
@@ -458,32 +467,14 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
   return `
     <div class="fifa-card-container ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
          style="display:inline-block; margin: 8px; cursor: pointer; user-select: none; transition: all 0.2s ease; ${outlineStyle}">
-      
       <div style="position: relative; width: 200px; height: 300px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5));">
-        
-        <!-- LAYER 1: CARD BACKGROUND FRAME -->
-        <img src="${bgGif}" alt="Card Frame" 
-             style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;"
-             onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
-
-        <!-- LAYER 2: PLAYER CUTOUT PHOTO -->
-        ${photo ? `
-          <img src="${photo}" alt="${name}" 
-               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 2;">
-        ` : ''}
-
-        <!-- LAYER 3: OVR RATING & POSITION -->
+        <img src="${bgGif}" alt="Card Frame" style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: contain; z-index: 1;" onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
+        ${photo ? `<img src="${photo}" alt="${name}" style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 2;">` : ''}
         <div style="position: absolute; top: 20px; left: 22px; z-index: 3; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
           <div style="font-size: 28px; font-weight: 900; line-height: 1;">${ovr}</div>
           <div style="font-size: 11px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
         </div>
-
-        <!-- LAYER 4: PLAYER NAME -->
-        <div style="position: absolute; top: 170px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 14px; letter-spacing: 0.5px;">
-          ${name}
-        </div>
-
-        <!-- LAYER 5: STATS GRID -->
+        <div style="position: absolute; top: 170px; width: 100%; text-align: center; z-index: 3; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 14px; letter-spacing: 0.5px;">${name}</div>
         <div style="position: absolute; top: 210px; left: 30px; right: 30px; z-index: 3; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${textColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
           <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">ATK</span></div>
           <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">RCV</span></div>
@@ -492,67 +483,71 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
           <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">SRV</span></div>
           <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">TMW</span></div>
         </div>
-
-        <!-- LAYER 6: EDIT BUTTON -->
-        ${(isAdmin && showEditButton) ? `
-          <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
-                  style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 80%; padding: 3px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
-        ` : ''}
-
+        ${showEditButton ? `<button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 80%; padding: 3px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>` : ''}
       </div>
     </div>
   `;
 }
 
-// RENDER ROSTER TAB
+// RENDERERS
 function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
-
   if (!players || players.length === 0) {
     grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players found. Click "+ Add Player" to create one.</p>';
     return;
   }
-
   grid.innerHTML = players.map(p => createCardHTML(p, String(p.id), selectedPlayerIds.has(String(p.id)), true)).join('');
 }
 
-// RENDER MATCHMAKER TAB
 function renderMatchTab() {
   const grid = document.getElementById('matchTabRosterGrid');
   const selectedCountEl = document.getElementById('selectedCount');
-
-  if (selectedCountEl) {
-    selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
-  }
-
+  if (selectedCountEl) selectedCountEl.innerText = `${selectedPlayerIds.size} Selected`;
   if (!grid) return;
-
   if (!players || players.length === 0) {
     grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players available to select.</p>';
     return;
   }
-
   grid.innerHTML = players.map(p => createCardHTML(p, String(p.id), selectedPlayerIds.has(String(p.id)), false)).join('');
 }
 
+function renderHistory() {
+  const container = document.getElementById('historyContainer');
+  if (!container) return;
+
+  if (matchHistory.length === 0) {
+    container.innerHTML = '<p class="sub-text" style="color:#94a3b8;">No past matches recorded yet.</p>';
+    return;
+  }
+
+  container.innerHTML = matchHistory.map(m => `
+    <div class="history-card" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1);">
+      <div class="history-header" style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+        <span style="color: #94a3b8; font-size: 0.8rem;">${m.date}</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${m.scoreA} - ${m.scoreB}</span>
+      </div>
+      <div class="history-teams" style="font-size: 0.85rem;">
+        <div><strong style="color:#fbbf24;">Team A:</strong> ${m.teamA.join(', ')}</div>
+        <div><strong style="color:#60a5fa;">Team B:</strong> ${m.teamB.join(', ')}</div>
+      </div>
+      ${m.mvpName !== 'None' ? `<div class="mvp-badge" style="margin-top: 6px; font-size: 0.8rem; color: #fbbf24;">⭐ MVP: ${m.mvpName}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// MATCHMAKER SELECTION CONTROLS
 window.toggleSelect = function(id) {
   const strId = String(id);
-  if (selectedPlayerIds.has(strId)) {
-    selectedPlayerIds.delete(strId);
-  } else {
-    selectedPlayerIds.add(strId);
-  }
+  if (selectedPlayerIds.has(strId)) selectedPlayerIds.delete(strId);
+  else selectedPlayerIds.add(strId);
   renderRoster();
   renderMatchTab();
 };
 
 window.selectAllPlayers = function(val) {
-  if (val) {
-    selectedPlayerIds = new Set(players.map(p => String(p.id)));
-  } else {
-    selectedPlayerIds.clear();
-  }
+  if (val) selectedPlayerIds = new Set(players.map(p => String(p.id)));
+  else selectedPlayerIds.clear();
   renderRoster();
   renderMatchTab();
 };
@@ -646,68 +641,25 @@ window.saveMatchResult = function() {
   if (panel) panel.style.display = 'none';
 };
 
-// MATCH HISTORY RENDERER
-function renderHistory() {
-  const container = document.getElementById('historyContainer');
-  if (!container) return;
-
-  if (matchHistory.length === 0) {
-    container.innerHTML = '<p class="sub-text" style="color:#94a3b8;">No past matches recorded yet.</p>';
-    return;
-  }
-
-  container.innerHTML = matchHistory.map(m => `
-    <div class="history-card" style="background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1);">
-      <div class="history-header" style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-        <span style="color: #94a3b8; font-size: 0.8rem;">${m.date}</span>
-        <span style="font-weight:bold; color:var(--accent-color);">${m.scoreA} - ${m.scoreB}</span>
-      </div>
-      <div class="history-teams" style="font-size: 0.85rem;">
-        <div><strong style="color:#fbbf24;">Team A:</strong> ${m.teamA.join(', ')}</div>
-        <div><strong style="color:#60a5fa;">Team B:</strong> ${m.teamB.join(', ')}</div>
-      </div>
-      ${m.mvpName !== 'None' ? `<div class="mvp-badge" style="margin-top: 6px; font-size: 0.8rem; color: #fbbf24;">⭐ MVP: ${m.mvpName}</div>` : ''}
-    </div>
-  `).join('');
-}
-
-// HIGH-EFFICIENCY IMAGE COMPRESSION (PNG CUTOUT FRIENDLY)
+// COMPRESSION HELPER
 function convertFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {
-      // Keep animated GIFs and SVGs as raw data URLs
-      if (file.type.includes("gif") || file.type.includes("svg")) {
-        return resolve(event.target.result);
-      }
-
+      if (file.type.includes("gif") || file.type.includes("svg")) return resolve(event.target.result);
       const img = new Image();
       img.src = event.target.result;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        
-        // 200px max dimension produces super lightweight PNGs (~20KB-30KB) that fit comfortably in Firebase
-        const maxDim = 200;
-
+        let width = img.width, height = img.height, maxDim = 200;
         if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
+          if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+          else { width = Math.round((width * maxDim) / height); height = maxDim; }
         }
-
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0, width, height);
-        
-        // Preserves transparency for cutouts while outputting ultra-lightweight Base64 PNGs
         resolve(canvas.toDataURL('image/png'));
       };
       img.onerror = () => resolve(event.target.result);
