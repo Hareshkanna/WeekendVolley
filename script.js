@@ -1,27 +1,43 @@
+// --- SAFE FIREBASE DB RESOLVER ---
+function getDb() {
+  if (window.db) return window.db;
+  if (typeof db !== 'undefined' && db) { 
+    window.db = db; 
+    return window.db; 
+  }
+  if (typeof firebase !== 'undefined' && firebase.firestore) {
+    window.db = firebase.firestore();
+    return window.db;
+  }
+  return null;
+}
+
 // --- AUTHENTICATION & ROLE MANAGEMENT ---
 let currentUser = null;
 let isAdmin = false;
 
-auth.onAuthStateChanged((user) => {
-  currentUser = user;
-  const badge = document.getElementById("userRoleBadge");
-  const loginBtn = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
+if (typeof auth !== 'undefined' && auth) {
+  auth.onAuthStateChanged((user) => {
+    currentUser = user;
+    const badge = document.getElementById("userRoleBadge");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
 
-  if (user) {
-    isAdmin = true;
-    if (badge) badge.innerText = "Role: Admin 👑";
-    if (loginBtn) loginBtn.style.display = "none";
-    if (logoutBtn) logoutBtn.style.display = "inline-block";
-  } else {
-    isAdmin = false;
-    if (badge) badge.innerText = "Role: Player/Viewer";
-    if (loginBtn) loginBtn.style.display = "inline-block";
-    if (logoutBtn) logoutBtn.style.display = "none";
-  }
-  
-  renderAllViews();
-});
+    if (user) {
+      isAdmin = true;
+      if (badge) badge.innerText = "Role: Admin 👑";
+      if (loginBtn) loginBtn.style.display = "none";
+      if (logoutBtn) logoutBtn.style.display = "inline-block";
+    } else {
+      isAdmin = false;
+      if (badge) badge.innerText = "Role: Player/Viewer";
+      if (loginBtn) loginBtn.style.display = "inline-block";
+      if (logoutBtn) logoutBtn.style.display = "none";
+    }
+    
+    renderAllViews();
+  });
+}
 
 window.openLoginModal = function() {
   const modal = document.getElementById("loginModal");
@@ -38,16 +54,18 @@ window.handleLogin = function(e) {
   const email = document.getElementById("loginEmail")?.value || "";
   const pass = document.getElementById("loginPassword")?.value || "";
 
-  auth.signInWithEmailAndPassword(email, pass)
-    .then(() => closeLoginModal())
-    .catch((error) => {
-      const errEl = document.getElementById("loginError");
-      if (errEl) errEl.innerText = error.message;
-    });
+  if (typeof auth !== 'undefined' && auth) {
+    auth.signInWithEmailAndPassword(email, pass)
+      .then(() => closeLoginModal())
+      .catch((error) => {
+        const errEl = document.getElementById("loginError");
+        if (errEl) errEl.innerText = error.message;
+      });
+  }
 };
 
 window.handleLogout = function() {
-  auth.signOut();
+  if (typeof auth !== 'undefined' && auth) auth.signOut();
 };
 
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
@@ -72,7 +90,6 @@ let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
 
-// REFRESH ALL UI TAB VIEWS
 function renderAllViews() {
   renderRoster();
   renderMatchTab();
@@ -81,13 +98,14 @@ function renderAllViews() {
   applySettings();
 }
 
-// SAVE APP SETTINGS & MATCH HISTORY TO FIREBASE + LOCALSTORAGE
 function saveAllAppData() {
   localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
   localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
 
-  if (!window.db) return;
-  db.collection("appData").doc("roster").set({
+  const firestore = getDb();
+  if (!firestore) return;
+
+  firestore.collection("appData").doc("roster").set({
     matchHistory: matchHistory,
     appSettings: appSettings,
     updatedAt: new Date().toISOString()
@@ -101,7 +119,7 @@ function calcOVR(stats) {
   return Math.min(99, Math.max(1, Math.round(sum)));
 }
 
-// TAB SWITCHING & NAVIGATION
+// TAB NAVIGATION
 window.switchTab = function(tabId, event) {
   document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -117,7 +135,6 @@ window.switchTab = function(tabId, event) {
   if (tabId === 'settingsTab') applySettings();
 };
 
-// THEME & SETTINGS
 const BACKGROUND_PRESETS = {
   midnight: '#0b0f19',
   stadium: 'radial-gradient(circle at center, #1e3a8a 0%, #090d16 100%)',
@@ -139,138 +156,9 @@ function applySettings() {
   if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor;
 }
 
-window.handleBgFileUpload = function(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      appSettings.bgCustomPhoto = reader.result;
-      saveAllAppData();
-      applySettings();
-    };
-    reader.readAsDataURL(file);
-  }
-};
-
-window.applyBgPreset = function(val) {
-  appSettings.bgPreset = val;
-  appSettings.bgCustomPhoto = '';
-  saveAllAppData();
-  applySettings();
-};
-
-window.updateAppAccent = function(color) {
-  appSettings.accentColor = color;
-  saveAllAppData();
-  applySettings();
-};
-
-window.handleGlobalCardDesignUpload = function(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      appSettings.globalCardDesignImg = reader.result;
-      saveAllAppData();
-      renderRoster();
-      renderMatchTab();
-    };
-    reader.readAsDataURL(file);
-  }
-};
-
-window.clearGlobalCardDesign = function() {
-  appSettings.globalCardDesignImg = '';
-  saveAllAppData();
-  renderRoster();
-  renderMatchTab();
-};
-
-// BACKUP & RESTORE
-window.exportDataBackup = function() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
-  const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `volleyball_hub_backup_${new Date().toISOString().slice(0,10)}.json`);
-  document.body.appendChild(downloadAnchor);
-  downloadAnchor.click();
-  downloadAnchor.remove();
-};
-
-window.importDataBackup = function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    try {
-      const parsed = JSON.parse(event.target.result);
-      if (parsed.players) players = parsed.players;
-      if (parsed.matchHistory) matchHistory = parsed.matchHistory;
-      if (parsed.appSettings) appSettings = parsed.appSettings;
-      saveAllAppData();
-      renderAllViews();
-      alert('Backup restored successfully!');
-    } catch (err) {
-      alert('Invalid backup JSON file.');
-    }
-  };
-  reader.readAsText(file);
-};
-
-// DASHBOARD RENDERER
-function renderDashboard() {
-  if (document.getElementById('dashTotalPlayers')) document.getElementById('dashTotalPlayers').innerText = players.length;
-  if (document.getElementById('dashTotalMatches')) document.getElementById('dashTotalMatches').innerText = matchHistory.length;
-
-  const sortedByMVP = [...players].sort((a,b) => (b.mvps || 0) - (a.mvps || 0));
-  const topMVP = sortedByMVP[0] && (sortedByMVP[0].mvps || 0) > 0 ? `${sortedByMVP[0].name} (${sortedByMVP[0].mvps})` : 'None';
-  if (document.getElementById('dashTopMVP')) document.getElementById('dashTopMVP').innerText = topMVP;
-
-  const topOvr = [...players].sort((a,b) => (b.ovr || 70) - (a.ovr || 70)).slice(0, 5);
-  const topList = document.getElementById('topPlayersList');
-  if (topList) {
-    topList.innerHTML = topOvr.map(p => `
-      <div class="list-row" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-        <span>${p.name} (${p.pos || 'OH'})</span>
-        <span style="font-weight:bold; color:var(--accent-color);">${p.ovr || 70} OVR</span>
-      </div>
-    `).join('');
-  }
-
-  const mvpList = document.getElementById('mvpLeaderboardList');
-  if (mvpList) {
-    mvpList.innerHTML = sortedByMVP.map(p => `
-      <div class="list-row" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-        <span>${p.name}</span>
-        <span style="font-weight:bold; color:var(--accent-color);">${p.mvps || 0} MVPs</span>
-      </div>
-    `).join('');
-  }
-}
-
-// MODAL CONTROLS
 window.closePlayerModal = function() {
   const modal = document.getElementById("playerModal");
   if (modal) modal.style.display = "none";
-};
-
-window.removeUploadedPhoto = function() {
-  const photoInput = document.getElementById("editPhoto");
-  if (photoInput) photoInput.value = "";
-  tempPhotoBase64 = "";
-  isPhotoRemoved = true;
-  alert("Photo cleared! Click 'Save Card' to confirm.");
-};
-
-window.removeUploadedCardDesign = function() {
-  const frameInput = document.getElementById("editCustomCardFrame");
-  const urlInput = document.getElementById("editCardImageUrl");
-  if (frameInput) frameInput.value = "";
-  if (urlInput) urlInput.value = "";
-  tempPlayerCardFrameBase64 = "";
-  isCardFrameRemoved = true;
-  alert("Card template cleared! Click 'Save Card' to confirm.");
 };
 
 window.openPlayerModal = function(id = null) {
@@ -312,7 +200,7 @@ window.openPlayerModal = function(id = null) {
   modal.style.display = "block";
 };
 
-// DIRECT FIRESTORE WRITE HANDLER
+// SAVE PLAYER
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -361,13 +249,14 @@ window.handleSavePlayer = async function(e) {
     updatedAt: new Date().toISOString()
   };
 
-  if (!window.db) {
-    alert("❌ Error: Firestore Database object (window.db) is missing!");
+  const firestore = getDb();
+  if (!firestore) {
+    alert("❌ Error: Firebase Firestore could not be initialized.");
     return;
   }
 
   try {
-    await db.collection("players").doc(String(editId)).set(playerData, { merge: true });
+    await firestore.collection("players").doc(String(editId)).set(playerData, { merge: true });
     closePlayerModal();
     alert("✅ Saved to cloud! Refreshing will now keep this card.");
   } catch (err) {
@@ -380,21 +269,24 @@ window.handleDeletePlayer = function() {
   const editId = document.getElementById("editId")?.value;
   if (!editId) return;
 
+  const firestore = getDb();
+  if (!firestore) return;
+
   if (confirm("Are you sure you want to delete this player?")) {
-    if (window.db) {
-      db.collection("players").doc(String(editId)).delete()
-        .then(() => {
-          closePlayerModal();
-          alert("Player deleted successfully!");
-        })
-        .catch(e => alert("Delete failed: " + e.message));
-    }
+    firestore.collection("players").doc(String(editId)).delete()
+      .then(() => {
+        closePlayerModal();
+        alert("Player deleted successfully!");
+      })
+      .catch(e => alert("Delete failed: " + e.message));
   }
 };
 
 window.handleBatchAdd = function() {
   const txt = document.getElementById('batchNames')?.value?.trim();
   if (!txt) return;
+
+  const firestore = getDb();
 
   txt.split('\n').map(n => n.trim()).filter(Boolean).forEach((name, i) => {
     const defaultStats = { atk:70, srv:70, rcv:70, blk:70, stm:70, tmw:70 };
@@ -405,8 +297,8 @@ window.handleBatchAdd = function() {
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: ''
     };
 
-    if (window.db) {
-      db.collection("players").doc(newId).set(newP);
+    if (firestore) {
+      firestore.collection("players").doc(newId).set(newP);
     }
   });
 
@@ -415,9 +307,10 @@ window.handleBatchAdd = function() {
 
 // REALTIME CLOUD LISTENERS
 function listenToCloudData() {
-  if (!window.firebase || !firebase.firestore || !window.db) return;
+  const firestore = getDb();
+  if (!firestore) return;
 
-  db.collection("players").onSnapshot(snapshot => {
+  firestore.collection("players").onSnapshot(snapshot => {
     if (snapshot && !snapshot.empty) {
       players = snapshot.docs.map(doc => ({
         ...doc.data(),
@@ -432,7 +325,7 @@ function listenToCloudData() {
     renderDashboard();
   }, err => console.error("Roster snapshot error:", err));
 
-  db.collection("appData").doc("roster").onSnapshot(doc => {
+  firestore.collection("appData").doc("roster").onSnapshot(doc => {
     if (doc.exists) {
       const data = doc.data();
       if (data.matchHistory) {
@@ -450,7 +343,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// CARD HTML GENERATOR
+// CARD BUILDER TEMPLATE
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
@@ -489,7 +382,6 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
   `;
 }
 
-// RENDERERS
 function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
@@ -510,6 +402,36 @@ function renderMatchTab() {
     return;
   }
   grid.innerHTML = players.map(p => createCardHTML(p, String(p.id), selectedPlayerIds.has(String(p.id)), false)).join('');
+}
+
+function renderDashboard() {
+  if (document.getElementById('dashTotalPlayers')) document.getElementById('dashTotalPlayers').innerText = players.length;
+  if (document.getElementById('dashTotalMatches')) document.getElementById('dashTotalMatches').innerText = matchHistory.length;
+
+  const sortedByMVP = [...players].sort((a,b) => (b.mvps || 0) - (a.mvps || 0));
+  const topMVP = sortedByMVP[0] && (sortedByMVP[0].mvps || 0) > 0 ? `${sortedByMVP[0].name} (${sortedByMVP[0].mvps})` : 'None';
+  if (document.getElementById('dashTopMVP')) document.getElementById('dashTopMVP').innerText = topMVP;
+
+  const topOvr = [...players].sort((a,b) => (b.ovr || 70) - (a.ovr || 70)).slice(0, 5);
+  const topList = document.getElementById('topPlayersList');
+  if (topList) {
+    topList.innerHTML = topOvr.map(p => `
+      <div class="list-row" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <span>${p.name} (${p.pos || 'OH'})</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${p.ovr || 70} OVR</span>
+      </div>
+    `).join('');
+  }
+
+  const mvpList = document.getElementById('mvpLeaderboardList');
+  if (mvpList) {
+    mvpList.innerHTML = sortedByMVP.map(p => `
+      <div class="list-row" style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <span>${p.name}</span>
+        <span style="font-weight:bold; color:var(--accent-color);">${p.mvps || 0} MVPs</span>
+      </div>
+    `).join('');
+  }
 }
 
 function renderHistory() {
@@ -536,7 +458,6 @@ function renderHistory() {
   `).join('');
 }
 
-// MATCHMAKER SELECTION CONTROLS
 window.toggleSelect = function(id) {
   const strId = String(id);
   if (selectedPlayerIds.has(strId)) selectedPlayerIds.delete(strId);
@@ -552,7 +473,7 @@ window.selectAllPlayers = function(val) {
   renderMatchTab();
 };
 
-// MATCHMAKING ENGINE
+// MATCHMAKER ENGINE
 window.generateMatch = function(balanced) {
   const pool = players.filter(p => selectedPlayerIds.has(String(p.id)));
   if (pool.length < 2) return alert(`Select at least 2 players! Currently selected: ${pool.length}`);
@@ -614,12 +535,14 @@ window.saveMatchResult = function() {
   const scoreB = Number(document.getElementById('scoreB')?.value) || 0;
   const mvpId = document.getElementById('mvpSelect')?.value;
 
+  const firestore = getDb();
+
   if (mvpId) {
     const mvpPlayer = players.find(p => String(p.id) === String(mvpId));
     if (mvpPlayer) {
       mvpPlayer.mvps = (mvpPlayer.mvps || 0) + 1;
-      if (window.db) {
-        db.collection("players").doc(mvpPlayer.id).update({ mvps: mvpPlayer.mvps });
+      if (firestore) {
+        firestore.collection("players").doc(mvpPlayer.id).update({ mvps: mvpPlayer.mvps });
       }
     }
   }
@@ -641,7 +564,6 @@ window.saveMatchResult = function() {
   if (panel) panel.style.display = 'none';
 };
 
-// COMPRESSION HELPER
 function convertFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
