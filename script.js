@@ -2,7 +2,13 @@
 const CLOUDINARY_CLOUD_NAME = "fsenwagl"; // e.g., "dxy12345"
 const CLOUDINARY_UPLOAD_PRESET = "WeekendVolley"; // e.g., "volley_preset"
 
-// --- CLOUDINARY UPLOAD HELPER (NO CREDIT CARD REQUIRED) ---
+// --- MEDIA TYPE HELPER (DETECTS VIDEOS vs IMAGES/GIFs) ---
+function isMediaVideo(url) {
+  if (!url) return false;
+  return url.includes('/video/upload/') || /\.(mp4|webm|ogg|mov|m4v)($|\?)/i.test(url);
+}
+
+// --- CLOUDINARY UPLOAD HELPER ---
 async function uploadToCloudinary(file) {
   if (!file) return "";
 
@@ -497,7 +503,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR
+// FIFAROSTERS-STYLE CARD HTML GENERATOR (AUTOPLAYING GIF AND VIDEO SUPPORT)
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
@@ -513,31 +519,41 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
     ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
     : 'opacity: 0.95;';
 
-  // Check if cutout/media is a video or image
-  const isVideo = photo.endsWith('.mp4') || photo.endsWith('.webm');
+  // Detect whether background frame or cutout photo are video files
+  const isBgVideo = isMediaVideo(bgGif);
+  const isCutoutVideo = isMediaVideo(photo);
 
   return `
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
          style="position: relative; width: 200px; height: 300px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
       
-      <!-- LAYER 1: CARD BACKGROUND FRAME -->
-      <img src="${bgGif}" alt="Card Frame" 
-           style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px;" 
-           onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
+      <!-- LAYER 1: CARD BACKGROUND FRAME (VIDEO vs IMAGE/GIF) -->
+      ${isBgVideo ? `
+        <video autoplay loop muted playsinline preload="auto" 
+               style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px; pointer-events: none;">
+          <source src="${bgGif}">
+        </video>
+      ` : `
+        <img src="${bgGif}" alt="Card Frame" 
+             style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px;" 
+             onerror="this.onerror=null; this.src='${DEFAULT_CARD_FRAME}';">
+      `}
 
       <!-- LAYER 2: SHINE / GLOSS OVERLAY EFFECT -->
       ${shine ? `
         <div style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 2; pointer-events: none; border-radius: 12px; background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.15) 100%);"></div>
       ` : ''}
 
-      <!-- LAYER 3: PLAYER CUTOUT / MEDIA (VIDEO OR PHOTO/GIF) -->
+      <!-- LAYER 3: PLAYER CUTOUT / MEDIA (VIDEO vs IMAGE/GIF) -->
       ${photo ? (
-        isVideo ? `
-          <video autoplay loop muted playsinline style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3;">
-            <source src="${photo}" type="video/mp4">
+        isCutoutVideo ? `
+          <video autoplay loop muted playsinline preload="auto" 
+                 style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none;">
+            <source src="${photo}">
           </video>
         ` : `
-          <img src="${photo}" alt="${name}" style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3;">
+          <img src="${photo}" alt="${name}" 
+               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none;">
         `
       ) : ''}
 
