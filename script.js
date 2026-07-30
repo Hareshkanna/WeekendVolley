@@ -1,6 +1,6 @@
-// --- CONFIGURATION: REPLACE WITH YOUR CLOUDINARY DETAILS ---
-const CLOUDINARY_CLOUD_NAME = "fsenwagl"; // e.g., "dxy12345"
-const CLOUDINARY_UPLOAD_PRESET = "WeekendVolley"; // e.g., "volley_preset"
+// --- CONFIGURATION: CLOUDINARY DETAILS ---
+const CLOUDINARY_CLOUD_NAME = "fsenwagl";
+const CLOUDINARY_UPLOAD_PRESET = "WeekendVolley";
 
 // --- MEDIA TYPE HELPER (DETECTS VIDEOS vs IMAGES/GIFs) ---
 function isMediaVideo(url) {
@@ -38,42 +38,6 @@ async function uploadToCloudinary(file) {
     console.error("Cloudinary upload failed:", err);
     alert("❌ Cloudinary Upload Error: " + err.message);
     return ""; // Stops invalid 1MB+ text strings from crashing Firestore!
-  }
-}
-
-  // If Cloudinary is not configured yet, fallback to local Object URL so card still works!
-  if (CLOUDINARY_CLOUD_NAME === "fsenwagl" || CLOUDINARY_UPLOAD_PRESET === "WeekendVolley") {
-    console.warn("⚠️ Cloudinary not configured yet. Converting file locally for session preview.");
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-  }
-
-  const resourceType = file.type.startsWith("video") ? "video" : "image";
-  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-  try {
-    const res = await fetch(url, { method: "POST", body: formData });
-    const data = await res.json();
-    if (data.secure_url) {
-      return data.secure_url;
-    } else {
-      throw new Error(data.error?.message || "Cloudinary Upload Failed");
-    }
-  } catch (err) {
-    console.error("Cloudinary upload failed:", err);
-    // Fallback to local Base64 string if network fails
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
   }
 }
 
