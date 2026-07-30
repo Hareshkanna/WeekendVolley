@@ -1,3 +1,38 @@
+// --- CONFIGURATION: REPLACE WITH YOUR CLOUDINARY DETAILS ---
+const CLOUDINARY_CLOUD_NAME = "fsenwagl"; // e.g., "dxy12345"
+const CLOUDINARY_UPLOAD_PRESET = "WeekendVolley"; // e.g., "volley_preset"
+
+// --- CLOUDINARY UPLOAD HELPER (NO CREDIT CARD REQUIRED) ---
+async function uploadToCloudinary(file) {
+  if (!file) return "";
+
+  if (CLOUDINARY_CLOUD_NAME === "fsenwagl" || CLOUDINARY_UPLOAD_PRESET === "WeekendVolley") {
+    alert("⚠️ Please paste your actual Cloudinary Cloud Name and Upload Preset at the top of script.js!");
+    return "";
+  }
+
+  const resourceType = file.type.startsWith("video") ? "video" : "image";
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  try {
+    const res = await fetch(url, { method: "POST", body: formData });
+    const data = await res.json();
+    if (data.secure_url) {
+      return data.secure_url;
+    } else {
+      throw new Error(data.error?.message || "Cloudinary Upload Failed");
+    }
+  } catch (err) {
+    console.error("Cloudinary upload failed:", err);
+    alert("❌ Upload failed: " + err.message);
+    return "";
+  }
+}
+
 // --- SAFE FIREBASE DB RESOLVER ---
 function getDb() {
   if (window.db) return window.db;
@@ -156,16 +191,15 @@ function applySettings() {
   if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor;
 }
 
-window.handleBgFileUpload = function(e) {
+window.handleBgFileUpload = async function(e) {
   const file = e.target.files[0];
   if (file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      appSettings.bgCustomPhoto = reader.result;
+    const uploadedUrl = await uploadToCloudinary(file);
+    if (uploadedUrl) {
+      appSettings.bgCustomPhoto = uploadedUrl;
       saveAllAppData();
       applySettings();
-    };
-    reader.readAsDataURL(file);
+    }
   }
 };
 
@@ -182,17 +216,16 @@ window.updateAppAccent = function(color) {
   applySettings();
 };
 
-window.handleGlobalCardDesignUpload = function(e) {
+window.handleGlobalCardDesignUpload = async function(e) {
   const file = e.target.files[0];
   if (file) {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      appSettings.globalCardDesignImg = reader.result;
+    const uploadedUrl = await uploadToCloudinary(file);
+    if (uploadedUrl) {
+      appSettings.globalCardDesignImg = uploadedUrl;
       saveAllAppData();
       renderRoster();
       renderMatchTab();
-    };
-    reader.readAsDataURL(file);
+    }
   }
 };
 
@@ -201,37 +234,6 @@ window.clearGlobalCardDesign = function() {
   saveAllAppData();
   renderRoster();
   renderMatchTab();
-};
-
-window.exportDataBackup = function() {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, matchHistory, appSettings }));
-  const downloadAnchor = document.createElement('a');
-  downloadAnchor.setAttribute("href", dataStr);
-  downloadAnchor.setAttribute("download", `volleyball_hub_backup_${new Date().toISOString().slice(0,10)}.json`);
-  document.body.appendChild(downloadAnchor);
-  downloadAnchor.click();
-  downloadAnchor.remove();
-};
-
-window.importDataBackup = function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    try {
-      const parsed = JSON.parse(event.target.result);
-      if (parsed.players) players = parsed.players;
-      if (parsed.matchHistory) matchHistory = parsed.matchHistory;
-      if (parsed.appSettings) appSettings = parsed.appSettings;
-      saveAllAppData();
-      renderAllViews();
-      alert('Backup restored successfully!');
-    } catch (err) {
-      alert('Invalid backup JSON file.');
-    }
-  };
-  reader.readAsText(file);
 };
 
 window.closePlayerModal = function() {
@@ -257,7 +259,7 @@ window.removeUploadedCardDesign = function() {
   updateModalPreview();
 };
 
-// LIVE CARD CREATOR PREVIEW UPDATER (FIFAROSTERS STYLE)
+// LIVE CARD PREVIEW
 window.updateModalPreview = function() {
   const previewBox = document.getElementById("cardCreatorLivePreview");
   if (!previewBox) return;
@@ -341,7 +343,7 @@ window.openPlayerModal = function(id = null) {
   updateModalPreview();
 };
 
-// SAVE PLAYER (CLOUD WRITE)
+// SAVE PLAYER WITH CLOUDINARY MEDIA UPLOADS
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -359,15 +361,20 @@ window.handleSavePlayer = async function(e) {
   let directCardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || "";
 
   let photoUrl = "";
-  if (photoFile) photoUrl = await convertFileToBase64(photoFile);
-  else if (tempPhotoBase64) photoUrl = tempPhotoBase64;
-  else if (currentEditingPlayer && !isPhotoRemoved) photoUrl = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
+  if (photoFile) {
+    photoUrl = await uploadToCloudinary(photoFile);
+  } else if (currentEditingPlayer && !isPhotoRemoved) {
+    photoUrl = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
+  }
 
   let cardFrameUrl = "";
-  if (customFrameFile) cardFrameUrl = await convertFileToBase64(customFrameFile);
-  else if (directCardUrl) cardFrameUrl = directCardUrl;
-  else if (tempPlayerCardFrameBase64) cardFrameUrl = tempPlayerCardFrameBase64;
-  else if (currentEditingPlayer && !isCardFrameRemoved) cardFrameUrl = currentEditingPlayer.cardFrameUrl || "";
+  if (customFrameFile) {
+    cardFrameUrl = await uploadToCloudinary(customFrameFile);
+  } else if (directCardUrl) {
+    cardFrameUrl = directCardUrl;
+  } else if (currentEditingPlayer && !isCardFrameRemoved) {
+    cardFrameUrl = currentEditingPlayer.cardFrameUrl || "";
+  }
 
   const stats = {
     atk: parseInt(document.getElementById("statAtk")?.value) || 70,
@@ -405,7 +412,7 @@ window.handleSavePlayer = async function(e) {
   try {
     await firestore.collection("players").doc(String(editId)).set(playerData, { merge: true });
     closePlayerModal();
-    alert("✅ Card saved to cloud successfully!");
+    alert("✅ Player card saved to cloud!");
   } catch (err) {
     console.error("❌ FIRESTORE WRITE FAILED:", err);
     alert("❌ Firestore write error: " + err.message);
@@ -506,6 +513,9 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
     ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
     : 'opacity: 0.95;';
 
+  // Check if cutout/media is a video or image
+  const isVideo = photo.endsWith('.mp4') || photo.endsWith('.webm');
+
   return `
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
          style="position: relative; width: 200px; height: 300px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
@@ -520,11 +530,16 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
         <div style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 2; pointer-events: none; border-radius: 12px; background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.15) 100%);"></div>
       ` : ''}
 
-      <!-- LAYER 3: PLAYER CUTOUT PHOTO -->
-      ${photo ? `
-        <img src="${photo}" alt="${name}" 
-             style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3;">
-      ` : ''}
+      <!-- LAYER 3: PLAYER CUTOUT / MEDIA (VIDEO OR PHOTO/GIF) -->
+      ${photo ? (
+        isVideo ? `
+          <video autoplay loop muted playsinline style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3;">
+            <source src="${photo}" type="video/mp4">
+          </video>
+        ` : `
+          <img src="${photo}" alt="${name}" style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3;">
+        `
+      ) : ''}
 
       <!-- LAYER 4: OVR RATING, POSITION & BADGE -->
       <div style="position: absolute; top: 22px; left: 22px; z-index: 4; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
@@ -740,38 +755,11 @@ window.saveMatchResult = function() {
   if (panel) panel.style.display = 'none';
 };
 
-function convertFileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      if (file.type.includes("gif") || file.type.includes("svg")) return resolve(event.target.result);
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width, height = img.height, maxDim = 200;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
-          else { width = Math.round((width * maxDim) / height); height = maxDim; }
-        }
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.onerror = () => resolve(event.target.result);
-    };
-    reader.onerror = (error) => reject(error);
-  });
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   listenToCloudData();
   applySettings();
   renderDashboard();
 
-  // Attach live input listeners for Fifarosters-style live previewing
   const form = document.getElementById("playerForm");
   if (form) {
     form.addEventListener("input", () => window.updateModalPreview());
