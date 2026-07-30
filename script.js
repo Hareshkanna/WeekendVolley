@@ -2,19 +2,29 @@
 const CLOUDINARY_CLOUD_NAME = "fsenwagl";
 const CLOUDINARY_UPLOAD_PRESET = "WeekendVolley";
 
+// --- SAFE LOCAL STORAGE PARSER (PREVENTS SCRIPT LOAD CRASHES) ---
+function safeGetStorage(key, fallback) {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : fallback;
+  } catch (e) {
+    console.warn(`localStorage parse error for key "${key}", resetting to fallback.`, e);
+    return fallback;
+  }
+}
+
 // --- MEDIA TYPE HELPER (DETECTS VIDEOS vs IMAGES/GIFs) ---
 function isMediaVideo(url) {
-  if (!url) return false;
+  if (!url || typeof url !== 'string') return false;
   return url.includes('/video/upload/') || /\.(mp4|webm|ogg|mov|m4v)($|\?)/i.test(url);
 }
 
-// --- CLOUDINARY UPLOAD HELPER (PREVENTS 1MB FIRESTORE CRASHES) ---
+// --- CLOUDINARY UPLOAD HELPER ---
 async function uploadToCloudinary(file) {
   if (!file) return "";
 
-  // 1. Check for default placeholder credentials
   if (CLOUDINARY_CLOUD_NAME === "YOUR_CLOUD_NAME_HERE" || CLOUDINARY_UPLOAD_PRESET === "YOUR_UNSIGNED_PRESET_HERE") {
-    alert("⚠️ Missing Cloudinary Credentials!\n\nPlease paste your real Cloud Name and Unsigned Preset at lines 2 & 3 of script.js.");
+    alert("⚠️ Missing Cloudinary Credentials!\n\nPlease check lines 2 & 3 of script.js.");
     return "";
   }
 
@@ -30,14 +40,14 @@ async function uploadToCloudinary(file) {
     const data = await res.json();
     
     if (data.secure_url) {
-      return data.secure_url; // Returns short https link (~80 bytes)
+      return data.secure_url; // Returns clean HTTPS link (~80 bytes)
     } else {
       throw new Error(data.error?.message || "Upload rejected by Cloudinary");
     }
   } catch (err) {
     console.error("Cloudinary upload failed:", err);
     alert("❌ Cloudinary Upload Error: " + err.message);
-    return ""; // Stops invalid 1MB+ text strings from crashing Firestore!
+    return "";
   }
 }
 
@@ -114,15 +124,15 @@ window.handleLogout = function() {
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 const DEFAULT_CARD_FRAME = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><defs><linearGradient id='gold' x1='0%25' y1='0%25' x2='0%25' y2='100%25'><stop offset='0%25' stop-color='%23fef08a'/><stop offset='50%25' stop-color='%23f59e0b'/><stop offset='100%25' stop-color='%2378350f'/></linearGradient></defs><rect width='200' height='300' rx='16' fill='url(%23gold)' stroke='%23fef08a' stroke-width='4'/></svg>";
 
-// GLOBAL APP STATE
+// GLOBAL APP STATE (SAFE INITIALIZATION)
 let players = [];
-let matchHistory = JSON.parse(localStorage.getItem('vb_hub_history')) || [];
-let appSettings = JSON.parse(localStorage.getItem('vb_hub_settings')) || {
+let matchHistory = safeGetStorage('vb_hub_history', []);
+let appSettings = safeGetStorage('vb_hub_settings', {
   bgPreset: 'midnight',
   bgCustomPhoto: '',
   globalCardDesignImg: '',
   accentColor: '#fbbf24'
-};
+});
 
 let selectedPlayerIds = new Set();
 let currentMatchData = null;
@@ -142,8 +152,12 @@ function renderAllViews() {
 }
 
 function saveAllAppData() {
-  localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
-  localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
+  try {
+    localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
+    localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
+  } catch (e) {
+    console.warn("localStorage save failed", e);
+  }
 
   const firestore = getDb();
   if (!firestore) return;
@@ -156,26 +170,39 @@ function saveAllAppData() {
 }
 
 function calcOVR(stats) {
+  if (!stats) return 70;
   const w = { atk:0.25, srv:0.20, rcv:0.20, blk:0.15, stm:0.10, tmw:0.10 };
   let sum = 0;
-  for (let k in w) sum += (stats[k] || 70) * w[k];
+  for (let k in w) sum += (Number(stats[k]) || 70) * w[k];
   return Math.min(99, Math.max(1, Math.round(sum)));
 }
 
-// TAB NAVIGATION
+// SAFE TAB NAVIGATION SWITCHER
 window.switchTab = function(tabId, event) {
-  document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  
-  const targetTab = document.getElementById(tabId);
-  if (targetTab) targetTab.classList.add('active');
-  if (event && event.currentTarget) event.currentTarget.classList.add('active');
+  try {
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    
+    const targetTab = document.getElementById(tabId);
+    if (targetTab) {
+      targetTab.classList.add('active');
+    } else {
+      console.warn(`Tab element #${tabId} not found.`);
+      return;
+    }
 
-  if (tabId === 'dashboardTab') renderDashboard();
-  if (tabId === 'playersTab') renderRoster();
-  if (tabId === 'matchTab') renderMatchTab();
-  if (tabId === 'historyTab') renderHistory();
-  if (tabId === 'settingsTab') applySettings();
+    if (event && event.currentTarget) {
+      event.currentTarget.classList.add('active');
+    }
+
+    if (tabId === 'dashboardTab') renderDashboard();
+    if (tabId === 'playersTab') renderRoster();
+    if (tabId === 'matchTab') renderMatchTab();
+    if (tabId === 'historyTab') renderHistory();
+    if (tabId === 'settingsTab') applySettings();
+  } catch (err) {
+    console.error("Tab switch error:", err);
+  }
 };
 
 const BACKGROUND_PRESETS = {
@@ -195,12 +222,12 @@ function applySettings() {
 
   document.documentElement.style.setProperty('--accent-color', appSettings.accentColor || '#fbbf24');
 
-  if (document.getElementById('bgPresetSelect')) document.getElementById('bgPresetSelect').value = appSettings.bgPreset;
-  if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor;
+  if (document.getElementById('bgPresetSelect')) document.getElementById('bgPresetSelect').value = appSettings.bgPreset || 'midnight';
+  if (document.getElementById('appAccentColor')) document.getElementById('appAccentColor').value = appSettings.accentColor || '#fbbf24';
 }
 
 window.handleBgFileUpload = async function(e) {
-  const file = e.target.files[0];
+  const file = e.target?.files?.[0];
   if (file) {
     const uploadedUrl = await uploadToCloudinary(file);
     if (uploadedUrl) {
@@ -225,7 +252,7 @@ window.updateAppAccent = function(color) {
 };
 
 window.handleGlobalCardDesignUpload = async function(e) {
-  const file = e.target.files[0];
+  const file = e.target?.files?.[0];
   if (file) {
     const uploadedUrl = await uploadToCloudinary(file);
     if (uploadedUrl) {
@@ -279,9 +306,8 @@ window.updateModalPreview = function() {
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
 
-  // Check file inputs first for immediate live preview
-  const photoFileInput = document.getElementById("editPhoto")?.files[0];
-  const frameFileInput = document.getElementById("editCustomCardFrame")?.files[0];
+  const photoFileInput = document.getElementById("editPhoto")?.files?.[0];
+  const frameFileInput = document.getElementById("editCustomCardFrame")?.files?.[0];
 
   let photo = "";
   if (photoFileInput) {
@@ -376,8 +402,8 @@ window.handleSavePlayer = async function(e) {
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
 
-  const photoFile = document.getElementById("editPhoto")?.files[0];
-  const customFrameFile = document.getElementById("editCustomCardFrame")?.files[0];
+  const photoFile = document.getElementById("editPhoto")?.files?.[0];
+  const customFrameFile = document.getElementById("editCustomCardFrame")?.files?.[0];
   let directCardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || "";
 
   let photoUrl = "";
@@ -504,11 +530,11 @@ function listenToCloudData() {
       const data = doc.data();
       if (data.matchHistory) {
         matchHistory = data.matchHistory;
-        localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory));
+        try { localStorage.setItem('vb_hub_history', JSON.stringify(matchHistory)); } catch(e){}
       }
       if (data.appSettings) {
         appSettings = data.appSettings;
-        localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings));
+        try { localStorage.setItem('vb_hub_settings', JSON.stringify(appSettings)); } catch(e){}
       }
       renderHistory();
       renderDashboard();
@@ -517,13 +543,15 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR (AUTOPLAYING GIF AND VIDEO SUPPORT WITH ERROR RECOVERY)
+// FIFAROSTERS-STYLE CARD HTML GENERATOR
 function createCardHTML(p, pId, isSel, showEditButton = true) {
+  if (!p) return '';
+
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
   const textColor = p.textColor || '#220e02';
-  const name = (p.name || 'PLAYER').toUpperCase();
-  const pos = (p.pos || 'OH').substring(0, 3).toUpperCase();
+  const name = String(p.name || 'PLAYER').toUpperCase();
+  const pos = String(p.pos || 'OH').substring(0, 3).toUpperCase();
   const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
   const ovr = p.ovr || 70;
   const badge = p.featureBadge || '';
