@@ -8,13 +8,18 @@ function isMediaVideo(url) {
   return url.includes('/video/upload/') || /\.(mp4|webm|ogg|mov|m4v)($|\?)/i.test(url);
 }
 
-// --- CLOUDINARY UPLOAD HELPER ---
+// --- CLOUDINARY UPLOAD HELPER WITH SAFE FALLBACK ---
 async function uploadToCloudinary(file) {
   if (!file) return "";
 
+  // If Cloudinary is not configured yet, fallback to local Object URL so card still works!
   if (CLOUDINARY_CLOUD_NAME === "fsenwagl" || CLOUDINARY_UPLOAD_PRESET === "WeekendVolley") {
-    alert("⚠️ Please paste your actual Cloudinary Cloud Name and Upload Preset at the top of script.js!");
-    return "";
+    console.warn("⚠️ Cloudinary not configured yet. Converting file locally for session preview.");
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
   }
 
   const resourceType = file.type.startsWith("video") ? "video" : "image";
@@ -34,8 +39,12 @@ async function uploadToCloudinary(file) {
     }
   } catch (err) {
     console.error("Cloudinary upload failed:", err);
-    alert("❌ Upload failed: " + err.message);
-    return "";
+    // Fallback to local Base64 string if network fails
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
   }
 }
 
@@ -265,7 +274,7 @@ window.removeUploadedCardDesign = function() {
   updateModalPreview();
 };
 
-// LIVE CARD PREVIEW
+// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS
 window.updateModalPreview = function() {
   const previewBox = document.getElementById("cardCreatorLivePreview");
   if (!previewBox) return;
@@ -274,9 +283,26 @@ window.updateModalPreview = function() {
   const pos = document.getElementById("editPos")?.value || "OH";
   const jersey = document.getElementById("editJersey")?.value || "0";
   const textColor = document.getElementById("editTextColor")?.value || "#220e02";
-  const cardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || tempPlayerCardFrameBase64 || (currentEditingPlayer && !isCardFrameRemoved ? currentEditingPlayer.cardFrameUrl : "");
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
+
+  // Check file inputs first for immediate live preview
+  const photoFileInput = document.getElementById("editPhoto")?.files[0];
+  const frameFileInput = document.getElementById("editCustomCardFrame")?.files[0];
+
+  let photo = "";
+  if (photoFileInput) {
+    photo = URL.createObjectURL(photoFileInput);
+  } else if (!isPhotoRemoved) {
+    photo = currentEditingPlayer?.photoUrl || currentEditingPlayer?.photo || "";
+  }
+
+  let cardUrl = document.getElementById("editCardImageUrl")?.value?.trim() || "";
+  if (frameFileInput) {
+    cardUrl = URL.createObjectURL(frameFileInput);
+  } else if (!cardUrl && !isCardFrameRemoved) {
+    cardUrl = currentEditingPlayer?.cardFrameUrl || "";
+  }
 
   const stats = {
     atk: parseInt(document.getElementById("statAtk")?.value) || 70,
@@ -288,11 +314,6 @@ window.updateModalPreview = function() {
   };
 
   const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
-
-  let photo = tempPhotoBase64;
-  if (!photo && currentEditingPlayer && !isPhotoRemoved) {
-    photo = currentEditingPlayer.photoUrl || currentEditingPlayer.photo || "";
-  }
 
   const dummyP = {
     id: "preview",
@@ -503,7 +524,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR (AUTOPLAYING GIF AND VIDEO SUPPORT)
+// FIFAROSTERS-STYLE CARD HTML GENERATOR (AUTOPLAYING GIF AND VIDEO SUPPORT WITH ERROR RECOVERY)
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
@@ -519,7 +540,6 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
     ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
     : 'opacity: 0.95;';
 
-  // Detect whether background frame or cutout photo are video files
   const isBgVideo = isMediaVideo(bgGif);
   const isCutoutVideo = isMediaVideo(photo);
 
@@ -527,7 +547,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
          style="position: relative; width: 200px; height: 300px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
       
-      <!-- LAYER 1: CARD BACKGROUND FRAME (VIDEO vs IMAGE/GIF) -->
+      <!-- LAYER 1: CARD BACKGROUND FRAME -->
       ${isBgVideo ? `
         <video autoplay loop muted playsinline preload="auto" 
                style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px; pointer-events: none;">
@@ -544,7 +564,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
         <div style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 2; pointer-events: none; border-radius: 12px; background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.15) 100%);"></div>
       ` : ''}
 
-      <!-- LAYER 3: PLAYER CUTOUT / MEDIA (VIDEO vs IMAGE/GIF) -->
+      <!-- LAYER 3: PLAYER CUTOUT / MEDIA -->
       ${photo ? (
         isCutoutVideo ? `
           <video autoplay loop muted playsinline preload="auto" 
@@ -553,7 +573,8 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
           </video>
         ` : `
           <img src="${photo}" alt="${name}" 
-               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none;">
+               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none;"
+               onerror="this.style.display='none';">
         `
       ) : ''}
 
