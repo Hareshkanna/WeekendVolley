@@ -8,17 +8,16 @@ function isMediaVideo(url) {
   return url.includes('/video/upload/') || /\.(mp4|webm|ogg|mov|m4v)($|\?)/i.test(url);
 }
 
-// --- CLOUDINARY UPLOAD HELPER (PREVENTS FIRESTORE 1MB CRASHES) ---
+// --- CLOUDINARY UPLOAD HELPER (PREVENTS 1MB FIRESTORE CRASHES) ---
 async function uploadToCloudinary(file) {
   if (!file) return "";
 
-  // 1. Check for missing credentials
+  // 1. Check for default placeholder credentials
   if (CLOUDINARY_CLOUD_NAME === "YOUR_CLOUD_NAME_HERE" || CLOUDINARY_UPLOAD_PRESET === "YOUR_UNSIGNED_PRESET_HERE") {
-    alert("⚠️ Missing Cloudinary setup!\n\nPlease paste your Cloud Name and Upload Preset at lines 2 & 3 of script.js.");
+    alert("⚠️ Missing Cloudinary Credentials!\n\nPlease paste your real Cloud Name and Unsigned Preset at lines 2 & 3 of script.js.");
     return "";
   }
 
-  // Detect whether it's a video or image/GIF
   const resourceType = file.type.startsWith("video") ? "video" : "image";
   const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`;
 
@@ -31,13 +30,13 @@ async function uploadToCloudinary(file) {
     const data = await res.json();
     
     if (data.secure_url) {
-      return data.secure_url; // Returns lightweight HTTPS link (~80 bytes)
+      return data.secure_url; // Returns short https link (~80 bytes)
     } else {
       throw new Error(data.error?.message || "Upload rejected by Cloudinary");
     }
   } catch (err) {
     console.error("Cloudinary upload failed:", err);
-    alert("❌ Cloudinary Upload Failed: " + err.message);
+    alert("❌ Cloudinary Upload Error: " + err.message);
     return ""; // Stops invalid 1MB+ text strings from crashing Firestore!
   }
 }
