@@ -88,6 +88,11 @@ if (typeof auth !== 'undefined' && auth) {
       if (logoutBtn) logoutBtn.style.display = "none";
     }
     
+    // Toggle UI controls restricted to Admins
+    document.querySelectorAll('.admin-only').forEach(el => {
+      el.style.display = isAdmin ? '' : 'none';
+    });
+
     renderAllViews();
   });
 }
@@ -294,7 +299,7 @@ window.removeUploadedCardDesign = function() {
   updateModalPreview();
 };
 
-// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS
+// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS & ADJUSTMENT INPUTS
 window.updateModalPreview = function() {
   const previewBox = document.getElementById("cardCreatorLivePreview");
   if (!previewBox) return;
@@ -303,8 +308,14 @@ window.updateModalPreview = function() {
   const pos = document.getElementById("editPos")?.value || "OH";
   const jersey = document.getElementById("editJersey")?.value || "0";
   const textColor = document.getElementById("editTextColor")?.value || "#220e02";
+  const statColor = document.getElementById("editStatColor")?.value || textColor;
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
+
+  // Image Adjustment Controls
+  const imgX = parseInt(document.getElementById("editImgX")?.value) || 0;
+  const imgY = parseInt(document.getElementById("editImgY")?.value) || 0;
+  const imgScale = parseFloat(document.getElementById("editImgScale")?.value) || 1;
 
   const photoFileInput = document.getElementById("editPhoto")?.files?.[0];
   const frameFileInput = document.getElementById("editCustomCardFrame")?.files?.[0];
@@ -340,6 +351,10 @@ window.updateModalPreview = function() {
     photoUrl: photo,
     cardFrameUrl: cardUrl,
     textColor,
+    statColor,
+    imgX,
+    imgY,
+    imgScale,
     hasShine,
     featureBadge
   };
@@ -348,6 +363,12 @@ window.updateModalPreview = function() {
 };
 
 window.openPlayerModal = function(id = null) {
+  // Admin protection check
+  if (!isAdmin) {
+    alert("🔒 Permission Denied: Only logged-in Admins can edit or create player cards.");
+    return;
+  }
+
   isPhotoRemoved = false;
   isCardFrameRemoved = false;
   tempPhotoBase64 = "";
@@ -364,6 +385,10 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editPos")) document.getElementById("editPos").value = currentEditingPlayer.pos || "OH";
       if (document.getElementById("editJersey")) document.getElementById("editJersey").value = currentEditingPlayer.jersey || "0";
       if (document.getElementById("editTextColor")) document.getElementById("editTextColor").value = currentEditingPlayer.textColor || "#220e02";
+      if (document.getElementById("editStatColor")) document.getElementById("editStatColor").value = currentEditingPlayer.statColor || currentEditingPlayer.textColor || "#220e02";
+      if (document.getElementById("editImgX")) document.getElementById("editImgX").value = currentEditingPlayer.imgX || 0;
+      if (document.getElementById("editImgY")) document.getElementById("editImgY").value = currentEditingPlayer.imgY || 0;
+      if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = currentEditingPlayer.imgScale || 1;
       if (document.getElementById("editCardImageUrl")) document.getElementById("editCardImageUrl").value = currentEditingPlayer.cardFrameUrl || "";
       if (document.getElementById("editShineToggle")) document.getElementById("editShineToggle").checked = !!currentEditingPlayer.hasShine;
       if (document.getElementById("editFeatureBadge")) document.getElementById("editFeatureBadge").value = currentEditingPlayer.featureBadge || "";
@@ -383,15 +408,24 @@ window.openPlayerModal = function(id = null) {
     if (form) form.reset();
     if (document.getElementById("editId")) document.getElementById("editId").value = "";
     if (document.getElementById("editTextColor")) document.getElementById("editTextColor").value = "#220e02";
+    if (document.getElementById("editStatColor")) document.getElementById("editStatColor").value = "#220e02";
+    if (document.getElementById("editImgX")) document.getElementById("editImgX").value = 0;
+    if (document.getElementById("editImgY")) document.getElementById("editImgY").value = 0;
+    if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = 1;
   }
 
   modal.style.display = "block";
   updateModalPreview();
 };
 
-// SAVE PLAYER WITH CLOUDINARY MEDIA UPLOADS
+// SAVE PLAYER WITH ADMIN LOCK & CLOUDINARY MEDIA UPLOADS
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
+
+  if (!isAdmin) {
+    alert("🔒 Permission Denied: Only logged-in Admins can save changes.");
+    return;
+  }
 
   const rawId = document.getElementById("editId")?.value;
   const editId = (rawId && rawId.trim() !== "") ? rawId.trim() : "p_" + Date.now();
@@ -399,6 +433,10 @@ window.handleSavePlayer = async function(e) {
   const pos = document.getElementById("editPos")?.value?.trim() || "OH";
   const jersey = document.getElementById("editJersey")?.value || "0";
   const textColor = document.getElementById("editTextColor")?.value || "#220e02";
+  const statColor = document.getElementById("editStatColor")?.value || textColor;
+  const imgX = Number(document.getElementById("editImgX")?.value) || 0;
+  const imgY = Number(document.getElementById("editImgY")?.value) || 0;
+  const imgScale = Number(document.getElementById("editImgScale")?.value) || 1;
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
 
@@ -443,6 +481,10 @@ window.handleSavePlayer = async function(e) {
     photoUrl: String(photoUrl),
     cardFrameUrl: String(cardFrameUrl),
     textColor: String(textColor),
+    statColor: String(statColor),
+    imgX: Number(imgX),
+    imgY: Number(imgY),
+    imgScale: Number(imgScale),
     hasShine: Boolean(hasShine),
     featureBadge: String(featureBadge),
     mvps: currentEditingPlayer ? Number(currentEditingPlayer.mvps || 0) : 0,
@@ -466,6 +508,11 @@ window.handleSavePlayer = async function(e) {
 };
 
 window.handleDeletePlayer = function() {
+  if (!isAdmin) {
+    alert("🔒 Permission Denied: Only logged-in Admins can delete player cards.");
+    return;
+  }
+
   const editId = document.getElementById("editId")?.value;
   if (!editId) return;
 
@@ -483,6 +530,11 @@ window.handleDeletePlayer = function() {
 };
 
 window.handleBatchAdd = function() {
+  if (!isAdmin) {
+    alert("🔒 Permission Denied: Only logged-in Admins can batch add players.");
+    return;
+  }
+
   const txt = document.getElementById('batchNames')?.value?.trim();
   if (!txt) return;
 
@@ -494,7 +546,8 @@ window.handleBatchAdd = function() {
     const newP = {
       id: newId,
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
-      photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: ''
+      photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: '',
+      imgX: 0, imgY: 0, imgScale: 1
     };
 
     if (firestore) {
@@ -543,13 +596,14 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR
+// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH IMAGE TRANSFORMATIONS & ADMIN EDIT LOCK)
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   if (!p) return '';
 
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
   const photo = p.photoUrl || p.photo || '';
   const textColor = p.textColor || '#220e02';
+  const statColor = p.statColor || textColor;
   const name = String(p.name || 'PLAYER').toUpperCase();
   const pos = String(p.pos || 'OH').substring(0, 3).toUpperCase();
   const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
@@ -557,12 +611,20 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
   const badge = p.featureBadge || '';
   const shine = p.hasShine;
 
+  const imgX = Number(p.imgX) || 0;
+  const imgY = Number(p.imgY) || 0;
+  const imgScale = Number(p.imgScale) || 1;
+  const imgTransform = `transform: translate(${imgX}px, ${imgY}px) scale(${imgScale}); transform-origin: center center;`;
+
   const borderStyle = isSel 
     ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
     : 'opacity: 0.95;';
 
   const isBgVideo = isMediaVideo(bgGif);
   const isCutoutVideo = isMediaVideo(photo);
+
+  // Only show edit button if showEditButton requested AND current user is admin
+  const renderEditBtn = showEditButton && isAdmin;
 
   return `
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
@@ -585,16 +647,16 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
         <div style="position: absolute; top:0; left:0; width:100%; height:100%; z-index: 2; pointer-events: none; border-radius: 12px; background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.15) 100%);"></div>
       ` : ''}
 
-      <!-- LAYER 3: PLAYER CUTOUT / MEDIA -->
+      <!-- LAYER 3: PLAYER CUTOUT / MEDIA WITH POSITION & ZOOM ADJUSTMENTS -->
       ${photo ? (
         isCutoutVideo ? `
           <video autoplay loop muted playsinline preload="auto" 
-                 style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none;">
+                 style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}">
             <source src="${photo}">
           </video>
         ` : `
           <img src="${photo}" alt="${name}" 
-               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none;"
+               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}"
                onerror="this.style.display='none';">
         `
       ) : ''}
@@ -612,7 +674,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
       </div>
 
       <!-- LAYER 6: VOLLEYBALL STATS GRID -->
-      <div style="position: absolute; top: 205px; left: 28px; right: 28px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${textColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
+      <div style="position: absolute; top: 205px; left: 28px; right: 28px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${statColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
         <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">ATK</span></div>
         <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">RCV</span></div>
         <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">BLK</span></div>
@@ -621,8 +683,8 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
         <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">TMW</span></div>
       </div>
 
-      <!-- LAYER 7: EDIT BUTTON -->
-      ${showEditButton ? `
+      <!-- LAYER 7: EDIT BUTTON (ADMIN ONLY) -->
+      ${renderEditBtn ? `
         <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
                 style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 75%; padding: 2px 4px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
       ` : ''}
@@ -635,7 +697,7 @@ function renderRoster() {
   const grid = document.getElementById('rosterGrid');
   if (!grid) return;
   if (!players || players.length === 0) {
-    grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players found. Click "+ Add Player" to create one.</p>';
+    grid.innerHTML = '<p style="color: #94a3b8; text-align: center; width: 100%;">No players found.</p>';
     return;
   }
   grid.innerHTML = players.map(p => createCardHTML(p, String(p.id), selectedPlayerIds.has(String(p.id)), true)).join('');
