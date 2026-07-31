@@ -203,7 +203,7 @@
     </div>
   </div>
 
-  <!-- PLAYER EDIT MODAL (WITH LIVE PREVIEW & ADJUSTMENTS) -->
+  <!-- PLAYER EDIT MODAL (WITH LIVE PREVIEW, SPRITE STRIP ENGINE & ADJUSTMENTS) -->
   <div id="playerModal" class="modal" style="display:none;">
     <div class="modal-content" style="max-width: 500px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155; max-height: 90vh; overflow-y: auto;">
       <span class="close" onclick="closePlayerModal()" style="float: right; cursor: pointer; font-size: 1.5rem;">&times;</span>
@@ -270,14 +270,44 @@
           </div>
         </div>
 
-        <div class="mt-sm" style="margin-top: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
-          <label class="input-lbl" style="font-weight: bold; color: #fbbf24;">Upload Card Template / Animated GIF</label>
-          <input type="file" id="editCustomCardFrame" accept="image/*" style="margin-bottom: 6px;">
+        <!-- CARD SHELL / SPRITE SHEET / GIF UPLOAD BOX -->
+        <div class="mt-sm" style="margin-top: 12px; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
+          <label class="input-lbl" style="font-weight: bold; color: #fbbf24;">Card Shell (Sprite Strip / PNG / GIF / MP4)</label>
+          <input type="file" id="editCustomCardFrame" accept="image/*, video/mp4, video/webm" style="margin-bottom: 6px;">
           
-          <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct GIF/PNG Image URL:</span>
-          <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.gif" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-bottom: 6px;">
-          
-          <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedCardDesign()" style="padding: 3px 8px; font-size: 0.75rem;">🗑️ Clear Card Template</button>
+          <div id="spriteStatusBadge" style="display:none; font-size:0.75rem; color:#10b981; background:rgba(16,185,129,0.1); padding:4px 8px; border-radius:4px; margin-bottom:8px; font-weight:bold;">
+            ✓ Sprite Strip Detected!
+          </div>
+
+          <span class="sub-text" style="display: block; font-size: 0.75rem; margin-bottom: 4px;">Or paste direct URL:</span>
+          <input type="url" id="editCardImageUrl" placeholder="https://i.imgur.com/your-card.gif" style="width: 100%; font-size: 0.85rem; padding: 6px; border-radius: 4px; border: 1px solid #334155; background: #0f172a; color: #fff; margin-bottom: 8px;">
+
+          <!-- SPRITE SHEET CONTROLS MENU -->
+          <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <label style="font-size: 0.8rem; color: #fbbf24; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+              <input type="checkbox" id="editIsSpriteSheet" onchange="toggleSpriteMenuDisplay()">
+              Enable Sprite Sheet Engine
+            </label>
+
+            <div id="spriteControlsBlock" style="display: none; background: rgba(15,23,42,0.8); padding: 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                <div>
+                  <label class="input-lbl" style="font-size: 0.7rem;">Total Frames</label>
+                  <input type="number" id="editSpriteTotalFrames" value="30" min="1" max="120" style="width:100%; font-size:0.8rem; padding:4px;">
+                </div>
+                <div>
+                  <label class="input-lbl" style="font-size: 0.7rem;">Active Frames</label>
+                  <input type="number" id="editSpriteActiveFrames" value="28" min="1" max="120" style="width:100%; font-size:0.8rem; padding:4px;">
+                </div>
+                <div>
+                  <label class="input-lbl" style="font-size: 0.7rem;">FPS Speed</label>
+                  <input type="number" id="editSpriteFPS" value="30" min="1" max="60" style="width:100%; font-size:0.8rem; padding:4px;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedCardDesign()" style="margin-top: 8px; padding: 3px 8px; font-size: 0.75rem;">🗑️ Clear Card Template</button>
         </div>
 
         <!-- STATS SLIDERS -->

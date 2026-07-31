@@ -2,7 +2,7 @@
 const CLOUDINARY_CLOUD_NAME = "fsenwagl";
 const CLOUDINARY_UPLOAD_PRESET = "WeekendVolley";
 
-// --- SAFE LOCAL STORAGE PARSER (PREVENTS SCRIPT LOAD CRASHES) ---
+// --- SAFE LOCAL STORAGE PARSER ---
 function safeGetStorage(key, fallback) {
   try {
     const item = localStorage.getItem(key);
@@ -88,7 +88,6 @@ if (typeof auth !== 'undefined' && auth) {
       if (logoutBtn) logoutBtn.style.display = "none";
     }
     
-    // Toggle UI controls restricted to Admins
     document.querySelectorAll('.admin-only').forEach(el => {
       el.style.display = isAdmin ? '' : 'none';
     });
@@ -129,7 +128,7 @@ window.handleLogout = function() {
 const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 const DEFAULT_CARD_FRAME = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'><defs><linearGradient id='gold' x1='0%25' y1='0%25' x2='0%25' y2='100%25'><stop offset='0%25' stop-color='%23fef08a'/><stop offset='50%25' stop-color='%23f59e0b'/><stop offset='100%25' stop-color='%2378350f'/></linearGradient></defs><rect width='200' height='300' rx='16' fill='url(%23gold)' stroke='%23fef08a' stroke-width='4'/></svg>";
 
-// GLOBAL APP STATE (SAFE INITIALIZATION)
+// GLOBAL APP STATE
 let players = [];
 let matchHistory = safeGetStorage('vb_hub_history', []);
 let appSettings = safeGetStorage('vb_hub_settings', {
@@ -147,6 +146,18 @@ let tempPlayerCardFrameBase64 = null;
 let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
+
+// REAL-TIME SPRITE ANIMATION ENGINE TICKER
+let spriteTickerIndex = 0;
+setInterval(() => {
+  spriteTickerIndex++;
+  document.querySelectorAll('.sprite-card-frame').forEach(el => {
+    const total = parseInt(el.dataset.totalFrames) || 30;
+    const active = parseInt(el.dataset.activeFrames) || total;
+    const frame = spriteTickerIndex % active;
+    el.style.backgroundPosition = `-${frame * 200}px 0px`;
+  });
+}, 1000 / 30);
 
 function renderAllViews() {
   renderRoster();
@@ -296,10 +307,22 @@ window.removeUploadedCardDesign = function() {
   if (urlInput) urlInput.value = "";
   tempPlayerCardFrameBase64 = "";
   isCardFrameRemoved = true;
+  if (document.getElementById("editIsSpriteSheet")) document.getElementById("editIsSpriteSheet").checked = false;
+  if (document.getElementById("spriteStatusBadge")) document.getElementById("spriteStatusBadge").style.display = "none";
+  toggleSpriteMenuDisplay();
   updateModalPreview();
 };
 
-// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS & ADJUSTMENT INPUTS
+window.toggleSpriteMenuDisplay = function() {
+  const chk = document.getElementById("editIsSpriteSheet");
+  const block = document.getElementById("spriteControlsBlock");
+  if (block) {
+    block.style.display = chk && chk.checked ? "block" : "none";
+  }
+  updateModalPreview();
+};
+
+// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS & SPRITE ENGINE
 window.updateModalPreview = function() {
   const previewBox = document.getElementById("cardCreatorLivePreview");
   if (!previewBox) return;
@@ -312,10 +335,14 @@ window.updateModalPreview = function() {
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
 
-  // Image Adjustment Controls
   const imgX = parseInt(document.getElementById("editImgX")?.value) || 0;
   const imgY = parseInt(document.getElementById("editImgY")?.value) || 0;
   const imgScale = parseFloat(document.getElementById("editImgScale")?.value) || 1;
+
+  const isSpriteSheet = document.getElementById("editIsSpriteSheet")?.checked || false;
+  const spriteTotalFrames = parseInt(document.getElementById("editSpriteTotalFrames")?.value) || 30;
+  const spriteActiveFrames = parseInt(document.getElementById("editSpriteActiveFrames")?.value) || 28;
+  const spriteFPS = parseInt(document.getElementById("editSpriteFPS")?.value) || 30;
 
   const photoFileInput = document.getElementById("editPhoto")?.files?.[0];
   const frameFileInput = document.getElementById("editCustomCardFrame")?.files?.[0];
@@ -355,6 +382,10 @@ window.updateModalPreview = function() {
     imgX,
     imgY,
     imgScale,
+    isSpriteSheet,
+    spriteTotalFrames,
+    spriteActiveFrames,
+    spriteFPS,
     hasShine,
     featureBadge
   };
@@ -363,7 +394,6 @@ window.updateModalPreview = function() {
 };
 
 window.openPlayerModal = function(id = null) {
-  // Admin protection check
   if (!isAdmin) {
     alert("🔒 Permission Denied: Only logged-in Admins can edit or create player cards.");
     return;
@@ -390,6 +420,12 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editImgY")) document.getElementById("editImgY").value = currentEditingPlayer.imgY || 0;
       if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = currentEditingPlayer.imgScale || 1;
       if (document.getElementById("editCardImageUrl")) document.getElementById("editCardImageUrl").value = currentEditingPlayer.cardFrameUrl || "";
+      
+      if (document.getElementById("editIsSpriteSheet")) document.getElementById("editIsSpriteSheet").checked = !!currentEditingPlayer.isSpriteSheet;
+      if (document.getElementById("editSpriteTotalFrames")) document.getElementById("editSpriteTotalFrames").value = currentEditingPlayer.spriteTotalFrames || 30;
+      if (document.getElementById("editSpriteActiveFrames")) document.getElementById("editSpriteActiveFrames").value = currentEditingPlayer.spriteActiveFrames || 28;
+      if (document.getElementById("editSpriteFPS")) document.getElementById("editSpriteFPS").value = currentEditingPlayer.spriteFPS || 30;
+
       if (document.getElementById("editShineToggle")) document.getElementById("editShineToggle").checked = !!currentEditingPlayer.hasShine;
       if (document.getElementById("editFeatureBadge")) document.getElementById("editFeatureBadge").value = currentEditingPlayer.featureBadge || "";
 
@@ -412,13 +448,15 @@ window.openPlayerModal = function(id = null) {
     if (document.getElementById("editImgX")) document.getElementById("editImgX").value = 0;
     if (document.getElementById("editImgY")) document.getElementById("editImgY").value = 0;
     if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = 1;
+    if (document.getElementById("editIsSpriteSheet")) document.getElementById("editIsSpriteSheet").checked = false;
   }
 
+  toggleSpriteMenuDisplay();
   modal.style.display = "block";
   updateModalPreview();
 };
 
-// SAVE PLAYER WITH ADMIN LOCK & CLOUDINARY MEDIA UPLOADS
+// SAVE PLAYER WITH CLOUDINARY UPLOADS & SPRITE STRIP SUPPORT
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -439,6 +477,11 @@ window.handleSavePlayer = async function(e) {
   const imgScale = Number(document.getElementById("editImgScale")?.value) || 1;
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
+
+  const isSpriteSheet = document.getElementById("editIsSpriteSheet")?.checked || false;
+  const spriteTotalFrames = Number(document.getElementById("editSpriteTotalFrames")?.value) || 30;
+  const spriteActiveFrames = Number(document.getElementById("editSpriteActiveFrames")?.value) || 28;
+  const spriteFPS = Number(document.getElementById("editSpriteFPS")?.value) || 30;
 
   const photoFile = document.getElementById("editPhoto")?.files?.[0];
   const customFrameFile = document.getElementById("editCustomCardFrame")?.files?.[0];
@@ -485,6 +528,10 @@ window.handleSavePlayer = async function(e) {
     imgX: Number(imgX),
     imgY: Number(imgY),
     imgScale: Number(imgScale),
+    isSpriteSheet: Boolean(isSpriteSheet),
+    spriteTotalFrames: Number(spriteTotalFrames),
+    spriteActiveFrames: Number(spriteActiveFrames),
+    spriteFPS: Number(spriteFPS),
     hasShine: Boolean(hasShine),
     featureBadge: String(featureBadge),
     mvps: currentEditingPlayer ? Number(currentEditingPlayer.mvps || 0) : 0,
@@ -596,7 +643,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH IMAGE TRANSFORMATIONS & ADMIN EDIT LOCK)
+// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH ANIMATED GIF, SPRITE STRIP & MP4 VIDEO SUPPORT)
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   if (!p) return '';
 
@@ -622,20 +669,28 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
 
   const isBgVideo = isMediaVideo(bgGif);
   const isCutoutVideo = isMediaVideo(photo);
+  const isSprite = Boolean(p.isSpriteSheet);
+  const totalFrames = Number(p.spriteTotalFrames) || 30;
+  const activeFrames = Number(p.spriteActiveFrames) || totalFrames;
 
-  // Only show edit button if showEditButton requested AND current user is admin
   const renderEditBtn = showEditButton && isAdmin;
 
   return `
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
          style="position: relative; width: 200px; height: 300px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
       
-      <!-- LAYER 1: CARD BACKGROUND FRAME -->
+      <!-- LAYER 1: CARD BACKGROUND FRAME (MP4 VIDEO / SPRITE SHEET / GIF / PNG) -->
       ${isBgVideo ? `
         <video autoplay loop muted playsinline preload="auto" 
                style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px; pointer-events: none;">
           <source src="${bgGif}">
         </video>
+      ` : isSprite ? `
+        <div class="sprite-card-frame" 
+             data-total-frames="${totalFrames}" 
+             data-active-frames="${activeFrames}"
+             style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: url('${bgGif}'); background-size: calc(200px * ${totalFrames}) 300px; background-position: 0px 0px; border-radius: 12px; z-index: 1; pointer-events: none;">
+        </div>
       ` : `
         <img src="${bgGif}" alt="Card Frame" 
              style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px;" 
@@ -884,5 +939,36 @@ document.addEventListener("DOMContentLoaded", () => {
   if (form) {
     form.addEventListener("input", () => window.updateModalPreview());
     form.addEventListener("change", () => window.updateModalPreview());
+  }
+
+  // AUTO-DETECT SPRITE STRIP WHEN UPLOADING CARD SHELL FILE
+  const frameInput = document.getElementById("editCustomCardFrame");
+  if (frameInput) {
+    frameInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file || file.type.startsWith('video')) return;
+
+      const img = new Image();
+      img.onload = function() {
+        const aspectRatio = img.naturalWidth / img.naturalHeight;
+        if (aspectRatio > 2) {
+          const singleWidth = img.naturalHeight * (2 / 3);
+          const rawFrames = Math.round(img.naturalWidth / singleWidth);
+          const total = rawFrames > 1 ? rawFrames : 30;
+          const active = Math.max(1, total - 2);
+
+          if (document.getElementById('editSpriteTotalFrames')) document.getElementById('editSpriteTotalFrames').value = total;
+          if (document.getElementById('editSpriteActiveFrames')) document.getElementById('editSpriteActiveFrames').value = active;
+          if (document.getElementById('editIsSpriteSheet')) document.getElementById('editIsSpriteSheet').checked = true;
+          if (document.getElementById('spriteStatusBadge')) {
+            const badge = document.getElementById('spriteStatusBadge');
+            badge.innerText = `✓ Sprite Strip Detected (${active}/${total} Active Frames)`;
+            badge.style.display = 'block';
+          }
+          toggleSpriteMenuDisplay();
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    });
   }
 });
