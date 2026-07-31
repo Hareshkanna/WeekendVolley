@@ -203,9 +203,9 @@
     </div>
   </div>
 
-  <!-- PLAYER EDIT MODAL (WITH LIVE PREVIEW, SPRITE STRIP ENGINE & ADJUSTMENTS) -->
+  <!-- PLAYER EDIT MODAL -->
   <div id="playerModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 500px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-content" style="max-width: 520px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155; max-height: 90vh; overflow-y: auto;">
       <span class="close" onclick="closePlayerModal()" style="float: right; cursor: pointer; font-size: 1.5rem;">&times;</span>
       <h3 id="modalTitle" style="color: #fbbf24; margin-bottom: 15px;">Edit Player Card</h3>
 
@@ -215,7 +215,7 @@
       <form id="playerForm" onsubmit="handleSavePlayer(event)">
         <input type="hidden" id="editId">
 
-        <!-- BASIC INFO -->
+        <!-- BASIC INFO & MANUAL OVR -->
         <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div>
             <label class="input-lbl">Player Name</label>
@@ -227,10 +227,14 @@
           </div>
         </div>
 
-        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px;">
           <div>
             <label class="input-lbl">Jersey #</label>
             <input type="number" id="editJersey" value="0">
+          </div>
+          <div>
+            <label class="input-lbl">Manual OVR</label>
+            <input type="number" id="editOvr" placeholder="Auto" min="1" max="99">
           </div>
           <div>
             <label class="input-lbl">Text Color</label>
@@ -239,6 +243,21 @@
           <div>
             <label class="input-lbl">Stat Color</label>
             <input type="color" id="editStatColor" value="#220e02" style="height:38px; padding:2px; width:100%; cursor:pointer; background:#1e293b; border:1px solid #334155; border-radius:6px;">
+          </div>
+        </div>
+
+        <!-- CARD DIMENSIONS (WIDTH & HEIGHT IN PIXELS) -->
+        <div class="mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Card Dimensions (Pixels)</span>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label class="input-lbl">Width (px)</label>
+              <input type="number" id="editCardWidth" value="200" min="100" max="600">
+            </div>
+            <div>
+              <label class="input-lbl">Height (px)</label>
+              <input type="number" id="editCardHeight" value="300" min="150" max="900">
+            </div>
           </div>
         </div>
 
@@ -312,7 +331,7 @@
 
         <!-- STATS SLIDERS -->
         <div class="stats-section mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
-          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Volleyball Stats</span>
+          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Volleyball Stats (Skills)</span>
           
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div>

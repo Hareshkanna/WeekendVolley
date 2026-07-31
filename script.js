@@ -147,15 +147,16 @@ let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
 
-// REAL-TIME SPRITE ANIMATION ENGINE TICKER
+// REAL-TIME SPRITE ANIMATION ENGINE TICKER (ADAPTS TO CUSTOM CARD WIDTH)
 let spriteTickerIndex = 0;
 setInterval(() => {
   spriteTickerIndex++;
   document.querySelectorAll('.sprite-card-frame').forEach(el => {
     const total = parseInt(el.dataset.totalFrames) || 30;
     const active = parseInt(el.dataset.activeFrames) || total;
+    const cardW = parseInt(el.dataset.cardWidth) || 200;
     const frame = spriteTickerIndex % active;
-    el.style.backgroundPosition = `-${frame * 200}px 0px`;
+    el.style.backgroundPosition = `-${frame * cardW}px 0px`;
   });
 }, 1000 / 30);
 
@@ -322,7 +323,7 @@ window.toggleSpriteMenuDisplay = function() {
   updateModalPreview();
 };
 
-// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS & SPRITE ENGINE
+// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS, CUSTOM PIXEL DIMENSIONS & MANUAL OVR
 window.updateModalPreview = function() {
   const previewBox = document.getElementById("cardCreatorLivePreview");
   if (!previewBox) return;
@@ -334,6 +335,9 @@ window.updateModalPreview = function() {
   const statColor = document.getElementById("editStatColor")?.value || textColor;
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
+
+  const cardWidth = parseInt(document.getElementById("editCardWidth")?.value) || 200;
+  const cardHeight = parseInt(document.getElementById("editCardHeight")?.value) || 300;
 
   const imgX = parseInt(document.getElementById("editImgX")?.value) || 0;
   const imgY = parseInt(document.getElementById("editImgY")?.value) || 0;
@@ -370,7 +374,10 @@ window.updateModalPreview = function() {
     tmw: parseInt(document.getElementById("statTmw")?.value) || 70
   };
 
-  const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
+  const manualOvrInput = document.getElementById("editOvr")?.value;
+  const ovr = (manualOvrInput !== "" && !isNaN(manualOvrInput)) 
+    ? parseInt(manualOvrInput) 
+    : Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
   const dummyP = {
     id: "preview",
@@ -379,6 +386,8 @@ window.updateModalPreview = function() {
     cardFrameUrl: cardUrl,
     textColor,
     statColor,
+    cardWidth,
+    cardHeight,
     imgX,
     imgY,
     imgScale,
@@ -414,8 +423,11 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editName")) document.getElementById("editName").value = currentEditingPlayer.name || "";
       if (document.getElementById("editPos")) document.getElementById("editPos").value = currentEditingPlayer.pos || "OH";
       if (document.getElementById("editJersey")) document.getElementById("editJersey").value = currentEditingPlayer.jersey || "0";
+      if (document.getElementById("editOvr")) document.getElementById("editOvr").value = currentEditingPlayer.manualOvr || "";
       if (document.getElementById("editTextColor")) document.getElementById("editTextColor").value = currentEditingPlayer.textColor || "#220e02";
       if (document.getElementById("editStatColor")) document.getElementById("editStatColor").value = currentEditingPlayer.statColor || currentEditingPlayer.textColor || "#220e02";
+      if (document.getElementById("editCardWidth")) document.getElementById("editCardWidth").value = currentEditingPlayer.cardWidth || 200;
+      if (document.getElementById("editCardHeight")) document.getElementById("editCardHeight").value = currentEditingPlayer.cardHeight || 300;
       if (document.getElementById("editImgX")) document.getElementById("editImgX").value = currentEditingPlayer.imgX || 0;
       if (document.getElementById("editImgY")) document.getElementById("editImgY").value = currentEditingPlayer.imgY || 0;
       if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = currentEditingPlayer.imgScale || 1;
@@ -443,8 +455,11 @@ window.openPlayerModal = function(id = null) {
     const form = document.getElementById("playerForm");
     if (form) form.reset();
     if (document.getElementById("editId")) document.getElementById("editId").value = "";
+    if (document.getElementById("editOvr")) document.getElementById("editOvr").value = "";
     if (document.getElementById("editTextColor")) document.getElementById("editTextColor").value = "#220e02";
     if (document.getElementById("editStatColor")) document.getElementById("editStatColor").value = "#220e02";
+    if (document.getElementById("editCardWidth")) document.getElementById("editCardWidth").value = 200;
+    if (document.getElementById("editCardHeight")) document.getElementById("editCardHeight").value = 300;
     if (document.getElementById("editImgX")) document.getElementById("editImgX").value = 0;
     if (document.getElementById("editImgY")) document.getElementById("editImgY").value = 0;
     if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = 1;
@@ -456,7 +471,7 @@ window.openPlayerModal = function(id = null) {
   updateModalPreview();
 };
 
-// SAVE PLAYER WITH CLOUDINARY UPLOADS & SPRITE STRIP SUPPORT
+// SAVE PLAYER WITH CLOUDINARY UPLOADS, SPRITE STRIPS & PIXEL CARD RESIZING
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -470,8 +485,13 @@ window.handleSavePlayer = async function(e) {
   const name = document.getElementById("editName")?.value?.trim() || "Player";
   const pos = document.getElementById("editPos")?.value?.trim() || "OH";
   const jersey = document.getElementById("editJersey")?.value || "0";
+  const manualOvrRaw = document.getElementById("editOvr")?.value;
   const textColor = document.getElementById("editTextColor")?.value || "#220e02";
   const statColor = document.getElementById("editStatColor")?.value || textColor;
+
+  const cardWidth = Number(document.getElementById("editCardWidth")?.value) || 200;
+  const cardHeight = Number(document.getElementById("editCardHeight")?.value) || 300;
+
   const imgX = Number(document.getElementById("editImgX")?.value) || 0;
   const imgY = Number(document.getElementById("editImgY")?.value) || 0;
   const imgScale = Number(document.getElementById("editImgScale")?.value) || 1;
@@ -512,7 +532,9 @@ window.handleSavePlayer = async function(e) {
     tmw: parseInt(document.getElementById("statTmw")?.value) || 70
   };
 
-  const ovr = Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
+  const ovr = (manualOvrRaw !== "" && !isNaN(manualOvrRaw))
+    ? Number(manualOvrRaw)
+    : Math.round((stats.atk + stats.srv + stats.rcv + stats.blk + stats.stm + stats.tmw) / 6);
 
   const playerData = {
     id: String(editId),
@@ -521,10 +543,13 @@ window.handleSavePlayer = async function(e) {
     jersey: String(jersey),
     stats: stats,
     ovr: Number(ovr),
+    manualOvr: manualOvrRaw !== "" ? Number(manualOvrRaw) : "",
     photoUrl: String(photoUrl),
     cardFrameUrl: String(cardFrameUrl),
     textColor: String(textColor),
     statColor: String(statColor),
+    cardWidth: Number(cardWidth),
+    cardHeight: Number(cardHeight),
     imgX: Number(imgX),
     imgY: Number(imgY),
     imgScale: Number(imgScale),
@@ -594,7 +619,7 @@ window.handleBatchAdd = function() {
       id: newId,
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: '',
-      imgX: 0, imgY: 0, imgScale: 1
+      cardWidth: 200, cardHeight: 300, imgX: 0, imgY: 0, imgScale: 1
     };
 
     if (firestore) {
@@ -643,7 +668,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH ANIMATED GIF, SPRITE STRIP & MP4 VIDEO SUPPORT)
+// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH DYNAMIC CARD WIDTH & HEIGHT IN PIXELS)
 function createCardHTML(p, pId, isSel, showEditButton = true) {
   if (!p) return '';
 
@@ -657,6 +682,9 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
   const ovr = p.ovr || 70;
   const badge = p.featureBadge || '';
   const shine = p.hasShine;
+
+  const cardWidth = Number(p.cardWidth) || 200;
+  const cardHeight = Number(p.cardHeight) || 300;
 
   const imgX = Number(p.imgX) || 0;
   const imgY = Number(p.imgY) || 0;
@@ -675,9 +703,13 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
 
   const renderEditBtn = showEditButton && isAdmin;
 
+  // Dynamically scale element positions if card dimensions change
+  const scaleW = cardWidth / 200;
+  const scaleH = cardHeight / 300;
+
   return `
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
-         style="position: relative; width: 200px; height: 300px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
+         style="position: relative; width: ${cardWidth}px; height: ${cardHeight}px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
       
       <!-- LAYER 1: CARD BACKGROUND FRAME (MP4 VIDEO / SPRITE SHEET / GIF / PNG) -->
       ${isBgVideo ? `
@@ -689,7 +721,8 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
         <div class="sprite-card-frame" 
              data-total-frames="${totalFrames}" 
              data-active-frames="${activeFrames}"
-             style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: url('${bgGif}'); background-size: calc(200px * ${totalFrames}) 300px; background-position: 0px 0px; border-radius: 12px; z-index: 1; pointer-events: none;">
+             data-card-width="${cardWidth}"
+             style="position: absolute; top:0; left:0; width:100%; height:100%; background-image: url('${bgGif}'); background-size: calc(${cardWidth}px * ${totalFrames}) ${cardHeight}px; background-position: 0px 0px; border-radius: 12px; z-index: 1; pointer-events: none;">
         </div>
       ` : `
         <img src="${bgGif}" alt="Card Frame" 
@@ -706,36 +739,36 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
       ${photo ? (
         isCutoutVideo ? `
           <video autoplay loop muted playsinline preload="auto" 
-                 style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}">
+                 style="position: absolute; top: ${38 * scaleH}px; left: ${40 * scaleW}px; width: ${120 * scaleW}px; height: ${120 * scaleH}px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}">
             <source src="${photo}">
           </video>
         ` : `
           <img src="${photo}" alt="${name}" 
-               style="position: absolute; top: 38px; left: 40px; width: 120px; height: 120px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}"
+               style="position: absolute; top: ${38 * scaleH}px; left: ${40 * scaleW}px; width: ${120 * scaleW}px; height: ${120 * scaleH}px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}"
                onerror="this.style.display='none';">
         `
       ) : ''}
 
       <!-- LAYER 4: OVR RATING, POSITION & BADGE -->
-      <div style="position: absolute; top: 22px; left: 22px; z-index: 4; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
-        <div style="font-size: 26px; font-weight: 900; line-height: 1;">${ovr}</div>
-        <div style="font-size: 11px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
-        ${badge ? `<div style="font-size: 14px; margin-top: 4px;">${badge}</div>` : ''}
+      <div style="position: absolute; top: ${22 * scaleH}px; left: ${22 * scaleW}px; z-index: 4; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
+        <div style="font-size: ${26 * scaleW}px; font-weight: 900; line-height: 1;">${ovr}</div>
+        <div style="font-size: ${11 * scaleW}px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
+        ${badge ? `<div style="font-size: ${14 * scaleW}px; margin-top: 4px;">${badge}</div>` : ''}
       </div>
 
       <!-- LAYER 5: PLAYER NAME -->
-      <div style="position: absolute; top: 168px; left: 10px; right: 10px; text-align: center; z-index: 4; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: 13px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+      <div style="position: absolute; top: ${168 * scaleH}px; left: 10px; right: 10px; text-align: center; z-index: 4; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: ${13 * scaleW}px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
         ${name}
       </div>
 
       <!-- LAYER 6: VOLLEYBALL STATS GRID -->
-      <div style="position: absolute; top: 205px; left: 28px; right: 28px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${statColor}; font-family: sans-serif; font-size: 11px; font-weight: 900;">
-        <div style="text-align: left;">${stats.atk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">ATK</span></div>
-        <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">RCV</span></div>
-        <div style="text-align: left;">${stats.blk || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">BLK</span></div>
-        <div style="text-align: right;">${stats.stm || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">STM</span></div>
-        <div style="text-align: left;">${stats.srv || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">SRV</span></div>
-        <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: 8px; font-weight: 700; opacity: 0.85;">TMW</span></div>
+      <div style="position: absolute; top: ${205 * scaleH}px; left: ${28 * scaleW}px; right: ${28 * scaleW}px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${statColor}; font-family: sans-serif; font-size: ${11 * scaleW}px; font-weight: 900;">
+        <div style="text-align: left;">${stats.atk || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">ATK</span></div>
+        <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">RCV</span></div>
+        <div style="text-align: left;">${stats.blk || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">BLK</span></div>
+        <div style="text-align: right;">${stats.stm || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">STM</span></div>
+        <div style="text-align: left;">${stats.srv || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">SRV</span></div>
+        <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">TMW</span></div>
       </div>
 
       <!-- LAYER 7: EDIT BUTTON (ADMIN ONLY) -->
