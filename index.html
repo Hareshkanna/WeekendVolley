@@ -73,7 +73,7 @@
 
   <!-- 2. PLAYERS MANAGEMENT PAGE -->
   <div id="playersTab" class="page-content">
-    <div class="panel">
+    <div class="panel admin-only">
       <div class="panel-title">
         <span>Batch Add Players</span>
       </div>
@@ -84,7 +84,7 @@
     <div class="panel">
       <div class="panel-title">
         <span>Roster Cards</span>
-        <button class="btn btn-primary modal-btn" onclick="openPlayerModal()">+ Add Player</button>
+        <button class="btn btn-primary modal-btn admin-only" onclick="openPlayerModal()">+ Add Player</button>
       </div>
       <div class="cards-grid" id="rosterGrid"></div>
     </div>
@@ -203,11 +203,14 @@
     </div>
   </div>
 
-  <!-- PLAYER EDIT MODAL (CLEAN & SINGLE) -->
+  <!-- PLAYER EDIT MODAL (WITH LIVE PREVIEW & ADJUSTMENTS) -->
   <div id="playerModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width: 500px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155;">
+    <div class="modal-content" style="max-width: 500px; background: #0f172a; color: #fff; padding: 20px; border-radius: 12px; border: 1px solid #334155; max-height: 90vh; overflow-y: auto;">
       <span class="close" onclick="closePlayerModal()" style="float: right; cursor: pointer; font-size: 1.5rem;">&times;</span>
       <h3 id="modalTitle" style="color: #fbbf24; margin-bottom: 15px;">Edit Player Card</h3>
+
+      <!-- LIVE PREVIEW BOX -->
+      <div id="cardCreatorLivePreview" style="text-align: center; margin-bottom: 15px;"></div>
 
       <form id="playerForm" onsubmit="handleSavePlayer(event)">
         <input type="hidden" id="editId">
@@ -224,14 +227,18 @@
           </div>
         </div>
 
-        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px;">
           <div>
-            <label class="input-lbl">Jersey Number</label>
+            <label class="input-lbl">Jersey #</label>
             <input type="number" id="editJersey" value="0">
           </div>
           <div>
-            <label class="input-lbl">Card Text Color</label>
+            <label class="input-lbl">Text Color</label>
             <input type="color" id="editTextColor" value="#220e02" style="height:38px; padding:2px; width:100%; cursor:pointer; background:#1e293b; border:1px solid #334155; border-radius:6px;">
+          </div>
+          <div>
+            <label class="input-lbl">Stat Color</label>
+            <input type="color" id="editStatColor" value="#220e02" style="height:38px; padding:2px; width:100%; cursor:pointer; background:#1e293b; border:1px solid #334155; border-radius:6px;">
           </div>
         </div>
 
@@ -240,6 +247,27 @@
           <label class="input-lbl">Upload Cutout Photo (PNG/GIF)</label>
           <input type="file" id="editPhoto" accept="image/*">
           <button type="button" class="btn btn-sec btn-sm" onclick="removeUploadedPhoto()" style="margin-top: 4px; padding: 3px 8px; font-size: 0.75rem;">🗑️ Remove Photo</button>
+        </div>
+
+        <!-- PHOTO POSITION & ZOOM SLIDERS -->
+        <div class="mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Photo Alignment & Zoom</span>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label class="input-lbl">Horiz (X): <span id="lblImgX">0</span>px</label>
+              <input type="range" id="editImgX" min="-60" max="60" value="0" oninput="document.getElementById('lblImgX').innerText = this.value">
+            </div>
+            <div>
+              <label class="input-lbl">Vert (Y): <span id="lblImgY">0</span>px</label>
+              <input type="range" id="editImgY" min="-60" max="60" value="0" oninput="document.getElementById('lblImgY').innerText = this.value">
+            </div>
+          </div>
+          
+          <div style="margin-top: 8px;">
+            <label class="input-lbl">Zoom Scale: <span id="lblImgScale">1.0</span>x</label>
+            <input type="range" id="editImgScale" min="0.5" max="2.0" step="0.05" value="1.0" oninput="document.getElementById('lblImgScale').innerText = this.value">
+          </div>
         </div>
 
         <div class="mt-sm" style="margin-top: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px dashed rgba(255,255,255,0.2);">
@@ -284,7 +312,7 @@
           </div>
         </div>
 
-        <!-- MODAL ACTIONS (SINGLE SAVE BUTTON) -->
+        <!-- MODAL ACTIONS -->
         <div class="modal-actions" style="margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn btn-sec" onclick="handleDeletePlayer()" style="background: #dc2626; color: #fff;">Delete</button>
           <button type="submit" class="btn btn-primary" style="background: #fbbf24; color: #000; font-weight: bold; padding: 8px 16px;">Save Card</button>
