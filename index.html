@@ -24,9 +24,7 @@
       <span>Dashboard</span>
     </button>
     <button class="nav-btn" onclick="switchTab('playersTab', event)">
-      <span class="icon"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOXVGGQdY43fcuRGQCYVULejmGFIhlpm784B2F2aMEHA&s=10" 
-                           style="max-width: 10%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-      </span>
+      <span class="icon">🏐</span>
       <span>Players</span>
     </button>
     <button class="nav-btn" onclick="switchTab('matchTab', event)">
@@ -90,7 +88,7 @@
     </div>
   </div>
 
-<!-- 3. MATCHMAKING PAGE -->
+  <!-- 3. MATCHMAKING PAGE -->
   <div id="matchTab" class="page-content">
     <div class="panel">
       <div class="panel-title">
@@ -195,7 +193,7 @@
       <p class="sub-text mb-sm">Save your data to a file or load it onto another mobile device/browser.</p>
       <div class="button-group-grid">
         <button class="btn btn-primary" onclick="exportDataBackup()">📥 Export Backup JSON</button>
-        <label class="btn btn-sec" style="margin:0; text-align:center;">
+        <label class="btn btn-sec" style="margin:0; text-align:center; cursor:pointer;">
           📤 Import Backup JSON
           <input type="file" id="importJsonInput" accept=".json" onchange="importDataBackup(event)" style="display:none;">
         </label>
@@ -243,6 +241,18 @@
           <div>
             <label class="input-lbl">Stat Color</label>
             <input type="color" id="editStatColor" value="#220e02" style="height:38px; padding:2px; width:100%; cursor:pointer; background:#1e293b; border:1px solid #334155; border-radius:6px;">
+          </div>
+        </div>
+
+        <!-- SPECIAL BADGE & SHINE EFFECT -->
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+          <div>
+            <label class="input-lbl">Feature Badge (e.g. ⭐, 👑)</label>
+            <input type="text" id="editFeatureBadge" placeholder="Badge emoji/text">
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 18px;">
+            <input type="checkbox" id="editShineToggle" style="width: auto; margin: 0; cursor: pointer;">
+            <label for="editShineToggle" class="input-lbl" style="cursor: pointer; color: #fbbf24; font-weight: bold;">Enable Card Shine Effect</label>
           </div>
         </div>
 

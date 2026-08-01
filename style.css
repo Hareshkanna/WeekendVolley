@@ -200,10 +200,10 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 
 /* Card Shield Base */
 .fifa-card-shield {
-  position: relative; /* Ensures absolute children align inside the shield */
+  position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Keeps top header, middle render, and bottom stats/button spaced */
+  justify-content: space-between;
 }
 
 /* Apply CSS Polygon clip ONLY when using internal CSS presets */
@@ -370,10 +370,18 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   position: relative;
   z-index: 15;
   width: 100%;
-  margin-top: auto; /* Pushes the button to the very bottom of the card content */
+  margin-top: auto;
   padding-top: 6px;
   text-align: center;
 }
+
+.fut-card-actions button {
+  width: 90%;
+  margin: 0 auto;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 /* MATCHMAKING & HISTORY */
 .teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
 .team-box { background: var(--bg-card); padding: 0.75rem; border-radius: 0.5rem; }
@@ -421,12 +429,10 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   height: 100vh;
   background: rgba(0, 0, 0, 0.8);
   z-index: 9999;
-  
-  /* Flex centering with scroll fallback */
-  align-items: flex-start; /* Keeps header visible at top */
+  align-items: flex-start;
   justify-content: center;
   padding: 1rem;
-  overflow-y: auto; /* Allows background wrapper to scroll if needed */
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -439,11 +445,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   border-radius: 14px;
   width: 100%;
   max-width: 480px;
-  margin: auto 0; /* Auto vertical margin handles mobile alignment */
-  
-  /* CRUCIAL SCROLL RULES */
-  max-height: 85vh; /* Fits within mobile screen height */
-  overflow-y: auto; /* Enables smooth inner scrollbar */
+  margin: auto 0;
+  max-height: 85vh;
+  overflow-y: auto;
   overscroll-behavior: contain;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
 }
@@ -459,7 +463,6 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   }
 }
 
-/* Optional: Custom scrollbar styling for a cleaner look */
 .modal-body::-webkit-scrollbar {
   width: 6px;
 }
@@ -488,26 +491,9 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .text-blue { color: #3b82f6; }
 .list-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; }
 
-.fut-card-actions {
-  position: relative;
-  z-index: 15;
-  width: 100%;
-  margin-top: auto; /* Pushes the button to the very bottom of the card content */
-  padding-top: 6px;
-  text-align: center;
-}
-
-.fut-card-actions button {
-  width: 90%;
-  margin: 0 auto;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-
 /* OVERRIDE: FORCE MODAL SCROLLING */
 body.modal-open {
-  overflow: hidden !important; /* Locks background page while scrolling modal */
+  overflow: hidden !important;
 }
 
 div#playerModal.modal,
@@ -518,34 +504,8 @@ div#loginModal.modal {
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  background: rgba(0, 0, 0, 0.85) !important;
-  z-index: 99999 !important;
-  
-  /* CRUCIAL: Allow outer overlay container to scroll */
-  overflow-y: scroll !important;
-  -webkit-overflow-scrolling: touch !important;
-  padding: 20px 10px !important;
-  box-sizing: border-box !important;
-}
-
-div#playerModal .modal-body,
-div#loginModal .modal-body {
-  position: relative !important;
-  margin: 30px auto !important; /* Gives room top & bottom so you can scroll past top/bottom */
-  background: #1e293b !important;
-  color: #ffffff !important;
-  padding: 1.5rem !important;
-  border-radius: 12px !important;
-  width: 100% !important;
-  max-width: 480px !important;
-  height: auto !important;
-  max-height: none !important; /* Removes inner clipping constraint */
-  overflow: visible !important;
-  
-  /* Enable all touch gestures */
-  touch-action: auto !important;
-  pointer-events: auto !important;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8) !important;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.8);
+  align-items: center;
+  justify-content: center;
 }

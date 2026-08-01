@@ -288,6 +288,56 @@ window.clearGlobalCardDesign = function() {
   renderMatchTab();
 };
 
+// DATA BACKUP & RESTORE
+window.exportDataBackup = function() {
+  const backupData = {
+    players: players,
+    matchHistory: matchHistory,
+    appSettings: appSettings,
+    exportedAt: new Date().toISOString()
+  };
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+  const downloadAnchor = document.createElement('a');
+  downloadAnchor.setAttribute("href", dataStr);
+  downloadAnchor.setAttribute("download", `volleyball_hub_backup_${Date.now()}.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+};
+
+window.importDataBackup = function(e) {
+  const file = e.target?.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const data = JSON.parse(event.target.result);
+      if (data.players && Array.isArray(data.players)) {
+        players = data.players;
+        const firestore = getDb();
+        if (firestore) {
+          data.players.forEach(p => {
+            firestore.collection("players").doc(String(p.id)).set(p, { merge: true });
+          });
+        }
+      }
+      if (data.matchHistory && Array.isArray(data.matchHistory)) {
+        matchHistory = data.matchHistory;
+      }
+      if (data.appSettings) {
+        appSettings = { ...appSettings, ...data.appSettings };
+      }
+      saveAllAppData();
+      renderAllViews();
+      alert("✅ Data backup imported successfully!");
+    } catch (err) {
+      alert("❌ Invalid JSON backup file: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+};
+
 window.closePlayerModal = function() {
   const modal = document.getElementById("playerModal");
   if (modal) modal.style.display = "none";
