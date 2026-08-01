@@ -373,7 +373,7 @@ window.toggleSpriteMenuDisplay = function() {
   updateModalPreview();
 };
 
-// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS, CUSTOM PIXEL DIMENSIONS & ELEMENT OFFSETS
+// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS, CUSTOM PIXEL DIMENSIONS & SKILLS GRID SETTINGS
 window.updateModalPreview = function() {
   const previewBox = document.getElementById("cardCreatorLivePreview");
   if (!previewBox) return;
@@ -400,6 +400,9 @@ window.updateModalPreview = function() {
   const statsX = parseInt(document.getElementById("editStatsX")?.value) || 0;
   const statsY = parseInt(document.getElementById("editStatsY")?.value) || 0;
 
+  const statsFontSize = parseInt(document.getElementById("editStatsFontSize")?.value) || 11;
+  const statsRowGap = parseInt(document.getElementById("editStatsRowGap")?.value) || 2;
+
   if (document.getElementById('lblImgX')) document.getElementById('lblImgX').innerText = imgX;
   if (document.getElementById('lblImgY')) document.getElementById('lblImgY').innerText = imgY;
   if (document.getElementById('lblImgScale')) document.getElementById('lblImgScale').innerText = imgScale;
@@ -409,6 +412,8 @@ window.updateModalPreview = function() {
   if (document.getElementById('lblNameY')) document.getElementById('lblNameY').innerText = nameY;
   if (document.getElementById('lblStatsX')) document.getElementById('lblStatsX').innerText = statsX;
   if (document.getElementById('lblStatsY')) document.getElementById('lblStatsY').innerText = statsY;
+  if (document.getElementById('lblStatsFont')) document.getElementById('lblStatsFont').innerText = statsFontSize;
+  if (document.getElementById('lblStatsRowGap')) document.getElementById('lblStatsRowGap').innerText = statsRowGap;
 
   const isSpriteSheet = document.getElementById("editIsSpriteSheet")?.checked || false;
   const spriteTotalFrames = parseInt(document.getElementById("editSpriteTotalFrames")?.value) || 30;
@@ -459,6 +464,8 @@ window.updateModalPreview = function() {
     badgeX, badgeY,
     nameX, nameY,
     statsX, statsY,
+    statsFontSize,
+    statsRowGap,
     isSpriteSheet,
     spriteTotalFrames,
     spriteActiveFrames,
@@ -508,6 +515,9 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editStatsX")) document.getElementById("editStatsX").value = currentEditingPlayer.statsX || 0;
       if (document.getElementById("editStatsY")) document.getElementById("editStatsY").value = currentEditingPlayer.statsY || 0;
 
+      if (document.getElementById("editStatsFontSize")) document.getElementById("editStatsFontSize").value = currentEditingPlayer.statsFontSize || 11;
+      if (document.getElementById("editStatsRowGap")) document.getElementById("editStatsRowGap").value = currentEditingPlayer.statsRowGap || 2;
+
       if (document.getElementById("editCardImageUrl")) document.getElementById("editCardImageUrl").value = currentEditingPlayer.cardFrameUrl || "";
       
       if (document.getElementById("editIsSpriteSheet")) document.getElementById("editIsSpriteSheet").checked = !!currentEditingPlayer.isSpriteSheet;
@@ -548,6 +558,8 @@ window.openPlayerModal = function(id = null) {
     if (document.getElementById("editNameY")) document.getElementById("editNameY").value = 0;
     if (document.getElementById("editStatsX")) document.getElementById("editStatsX").value = 0;
     if (document.getElementById("editStatsY")) document.getElementById("editStatsY").value = 0;
+    if (document.getElementById("editStatsFontSize")) document.getElementById("editStatsFontSize").value = 11;
+    if (document.getElementById("editStatsRowGap")) document.getElementById("editStatsRowGap").value = 2;
 
     if (document.getElementById("editIsSpriteSheet")) document.getElementById("editIsSpriteSheet").checked = false;
   }
@@ -557,7 +569,7 @@ window.openPlayerModal = function(id = null) {
   updateModalPreview();
 };
 
-// SAVE PLAYER WITH CLOUDINARY UPLOADS & ELEMENT OFFSETS
+// SAVE PLAYER WITH CLOUDINARY UPLOADS & SKILLS GRID SETTINGS
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -588,6 +600,9 @@ window.handleSavePlayer = async function(e) {
   const nameY = Number(document.getElementById("editNameY")?.value) || 0;
   const statsX = Number(document.getElementById("editStatsX")?.value) || 0;
   const statsY = Number(document.getElementById("editStatsY")?.value) || 0;
+
+  const statsFontSize = Number(document.getElementById("editStatsFontSize")?.value) || 11;
+  const statsRowGap = Number(document.getElementById("editStatsRowGap")?.value) || 2;
 
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
@@ -653,6 +668,8 @@ window.handleSavePlayer = async function(e) {
     nameY: Number(nameY),
     statsX: Number(statsX),
     statsY: Number(statsY),
+    statsFontSize: Number(statsFontSize),
+    statsRowGap: Number(statsRowGap),
     isSpriteSheet: Boolean(isSpriteSheet),
     spriteTotalFrames: Number(spriteTotalFrames),
     spriteActiveFrames: Number(spriteActiveFrames),
@@ -720,7 +737,7 @@ window.handleBatchAdd = function() {
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: '',
       cardWidth: 200, cardHeight: 300, imgX: 0, imgY: 0, imgScale: 1,
-      badgeX: 0, badgeY: 0, nameX: 0, nameY: 0, statsX: 0, statsY: 0
+      badgeX: 0, badgeY: 0, nameX: 0, nameY: 0, statsX: 0, statsY: 0, statsFontSize: 11, statsRowGap: 2
     };
 
     if (firestore) {
@@ -769,7 +786,7 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH MOVABLE ELEMENTS)
+// CARD HTML GENERATOR WITH DYNAMIC SKILLS GRID SECTION RENDERING
 function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false) {
   if (!p) return '';
 
@@ -804,6 +821,9 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
   const statsX = Number(p.statsX) || 0;
   const statsY = Number(p.statsY) || 0;
   const statsTransform = `transform: translate(${statsX}px, ${statsY}px);`;
+
+  const statsFontSize = Number(p.statsFontSize) || 11;
+  const statsRowGap = Number(p.statsRowGap) !== undefined ? Number(p.statsRowGap) : 2;
 
   const borderStyle = isSel 
     ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
@@ -878,15 +898,15 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
         ${name}
       </div>
 
-      <!-- LAYER 6: VOLLEYBALL STATS GRID -->
+      <!-- LAYER 6: SKILLS GRID SECTION (WITH MANUAL FONT, ROW GAP & OFFSETS) -->
       <div data-element="stats" class="${isPreview ? 'draggable-layer' : ''}" 
-           style="position: absolute; top: ${205 * scaleH}px; left: ${28 * scaleW}px; right: ${28 * scaleW}px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${statColor}; font-family: sans-serif; font-size: ${11 * scaleW}px; font-weight: 900; pointer-events: ${isPreview ? 'auto' : 'none'}; ${statsTransform}">
-        <div style="text-align: left;">${stats.atk || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">ATK</span></div>
-        <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">RCV</span></div>
-        <div style="text-align: left;">${stats.blk || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">BLK</span></div>
-        <div style="text-align: right;">${stats.stm || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">STM</span></div>
-        <div style="text-align: left;">${stats.srv || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">SRV</span></div>
-        <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">TMW</span></div>
+           style="position: absolute; top: ${205 * scaleH}px; left: ${28 * scaleW}px; right: ${28 * scaleW}px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: ${statsRowGap}px; color: ${statColor}; font-family: sans-serif; font-size: ${statsFontSize * scaleW}px; font-weight: 900; pointer-events: ${isPreview ? 'auto' : 'none'}; ${statsTransform}">
+        <div style="text-align: left;">${stats.atk || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">ATK</span></div>
+        <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">RCV</span></div>
+        <div style="text-align: left;">${stats.blk || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">BLK</span></div>
+        <div style="text-align: right;">${stats.stm || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">STM</span></div>
+        <div style="text-align: left;">${stats.srv || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">SRV</span></div>
+        <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">TMW</span></div>
       </div>
 
       <!-- LAYER 7: EDIT BUTTON (ADMIN ONLY) -->

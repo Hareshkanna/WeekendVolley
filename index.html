@@ -336,7 +336,7 @@
 
           <!-- STATS GRID -->
           <div>
-            <span class="input-lbl" style="color: #cbd5e1; font-weight: bold;">Stats Grid</span>
+            <span class="input-lbl" style="color: #cbd5e1; font-weight: bold;">Stats Grid Position</span>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div>
                 <label class="input-lbl">X Offset: <span id="lblStatsX">0</span>px</label>
@@ -346,6 +346,21 @@
                 <label class="input-lbl">Y Offset: <span id="lblStatsY">0</span>px</label>
                 <input type="range" id="editStatsY" min="-120" max="120" value="0" oninput="document.getElementById('lblStatsY').innerText = this.value">
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEW: SKILLS GRID SECTION MANUAL TYPOGRAPHY & LAYOUT CUSTOMIZATION -->
+        <div class="mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Skills Grid Section Typography & Spacing</span>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label class="input-lbl">Font Size: <span id="lblStatsFont">11</span>px</label>
+              <input type="range" id="editStatsFontSize" min="8" max="18" value="11" oninput="document.getElementById('lblStatsFont').innerText = this.value">
+            </div>
+            <div>
+              <label class="input-lbl">Row Gap: <span id="lblStatsRowGap">2</span>px</label>
+              <input type="range" id="editStatsRowGap" min="0" max="12" value="2" oninput="document.getElementById('lblStatsRowGap').innerText = this.value">
             </div>
           </div>
         </div>
