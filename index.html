@@ -207,8 +207,9 @@
       <span class="close" onclick="closePlayerModal()" style="float: right; cursor: pointer; font-size: 1.5rem;">&times;</span>
       <h3 id="modalTitle" style="color: #fbbf24; margin-bottom: 15px;">Edit Player Card</h3>
 
-      <!-- LIVE PREVIEW BOX -->
-      <div id="cardCreatorLivePreview" style="text-align: center; margin-bottom: 15px;"></div>
+      <!-- LIVE PREVIEW BOX (Support drag & drop element positioning) -->
+      <p class="sub-text" style="text-align: center; margin-bottom: 6px; color: #fbbf24;">💡 Tip: You can drag any element directly on the card preview below!</p>
+      <div id="cardCreatorLivePreview" style="text-align: center; margin-bottom: 15px; position: relative;"></div>
 
       <form id="playerForm" onsubmit="handleSavePlayer(event)">
         <input type="hidden" id="editId">
@@ -285,17 +286,67 @@
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div>
               <label class="input-lbl">Horiz (X): <span id="lblImgX">0</span>px</label>
-              <input type="range" id="editImgX" min="-60" max="60" value="0" oninput="document.getElementById('lblImgX').innerText = this.value">
+              <input type="range" id="editImgX" min="-150" max="150" value="0" oninput="document.getElementById('lblImgX').innerText = this.value">
             </div>
             <div>
               <label class="input-lbl">Vert (Y): <span id="lblImgY">0</span>px</label>
-              <input type="range" id="editImgY" min="-60" max="60" value="0" oninput="document.getElementById('lblImgY').innerText = this.value">
+              <input type="range" id="editImgY" min="-150" max="150" value="0" oninput="document.getElementById('lblImgY').innerText = this.value">
             </div>
           </div>
           
           <div style="margin-top: 8px;">
             <label class="input-lbl">Zoom Scale: <span id="lblImgScale">1.0</span>x</label>
-            <input type="range" id="editImgScale" min="0.5" max="2.0" step="0.05" value="1.0" oninput="document.getElementById('lblImgScale').innerText = this.value">
+            <input type="range" id="editImgScale" min="0.5" max="3.0" step="0.05" value="1.0" oninput="document.getElementById('lblImgScale').innerText = this.value">
+          </div>
+        </div>
+
+        <!-- CARD ELEMENTS POSITION ADJUSTMENT SLIDERS -->
+        <div class="mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Card Element Offsets (Badge, Name, Stats)</span>
+          
+          <!-- BADGE & OVR STACK -->
+          <div style="margin-bottom: 10px;">
+            <span class="input-lbl" style="color: #cbd5e1; font-weight: bold;">OVR / Badge Stack</span>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label class="input-lbl">X Offset: <span id="lblBadgeX">0</span>px</label>
+                <input type="range" id="editBadgeX" min="-120" max="120" value="0" oninput="document.getElementById('lblBadgeX').innerText = this.value">
+              </div>
+              <div>
+                <label class="input-lbl">Y Offset: <span id="lblBadgeY">0</span>px</label>
+                <input type="range" id="editBadgeY" min="-120" max="120" value="0" oninput="document.getElementById('lblBadgeY').innerText = this.value">
+              </div>
+            </div>
+          </div>
+
+          <!-- PLAYER NAME -->
+          <div style="margin-bottom: 10px;">
+            <span class="input-lbl" style="color: #cbd5e1; font-weight: bold;">Player Name</span>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label class="input-lbl">X Offset: <span id="lblNameX">0</span>px</label>
+                <input type="range" id="editNameX" min="-120" max="120" value="0" oninput="document.getElementById('lblNameX').innerText = this.value">
+              </div>
+              <div>
+                <label class="input-lbl">Y Offset: <span id="lblNameY">0</span>px</label>
+                <input type="range" id="editNameY" min="-120" max="120" value="0" oninput="document.getElementById('lblNameY').innerText = this.value">
+              </div>
+            </div>
+          </div>
+
+          <!-- STATS GRID -->
+          <div>
+            <span class="input-lbl" style="color: #cbd5e1; font-weight: bold;">Stats Grid</span>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label class="input-lbl">X Offset: <span id="lblStatsX">0</span>px</label>
+                <input type="range" id="editStatsX" min="-120" max="120" value="0" oninput="document.getElementById('lblStatsX').innerText = this.value">
+              </div>
+              <div>
+                <label class="input-lbl">Y Offset: <span id="lblStatsY">0</span>px</label>
+                <input type="range" id="editStatsY" min="-120" max="120" value="0" oninput="document.getElementById('lblStatsY').innerText = this.value">
+              </div>
+            </div>
           </div>
         </div>
 

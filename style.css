@@ -172,10 +172,26 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .button-group-sm { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
 .button-group-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 
-/* ==========================================================================
-   AUTHENTIC FUT CARD & CUSTOM PINTEREST TEMPLATE OVERLAY ENGINE
-   ========================================================================== */
+/* DRAGGABLE PREVIEW LAYER STYLING */
+.draggable-layer {
+  cursor: grab !important;
+  user-select: none !important;
+  touch-action: none !important;
+  pointer-events: auto !important;
+  transition: outline 0.15s ease;
+}
 
+.draggable-layer:active {
+  cursor: grabbing !important;
+}
+
+.draggable-layer:hover {
+  outline: 2px dashed #fbbf24;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* CARDS GRID */
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -221,7 +237,7 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   z-index: 10;
 }
 
-/* Custom Uploaded Blank Card Image (Fits edge-to-edge naturally) */
+/* Custom Uploaded Blank Card Image */
 .fifa-custom-frame-img {
   position: absolute;
   inset: 0;
@@ -290,7 +306,7 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   opacity: 0.8;
 }
 
-/* PLAYER RENDER (Overlay on right side of top card section) */
+/* PLAYER RENDER */
 .fut-player-render {
   position: absolute;
   top: 0.8rem;
@@ -310,7 +326,7 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.55));
 }
 
-/* NAME RIBBON (Positioned right across the gold name band) */
+/* NAME RIBBON */
 .fut-name-ribbon {
   position: absolute;
   top: 168px;
@@ -330,7 +346,7 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 }
 
-/* STATS GRID SECTION (Placed across bottom section of template) */
+/* STATS GRID SECTION */
 .fut-stats-grid {
   position: absolute;
   top: 205px;
@@ -452,7 +468,6 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
 }
 
-/* Mobile-Specific Extra Margin */
 @media (max-width: 600px) {
   .modal {
     padding: 0.75rem;
@@ -477,35 +492,3 @@ textarea:focus, input:focus, select:focus { outline: none; border-color: var(--a
 .close-btn { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; }
 .input-lbl { font-size: 0.75rem; color: var(--text-muted); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; }
-.stats-section { margin-top: 0.75rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem; }
-.stats-header { font-size: 0.8rem; font-weight: 800; color: var(--accent-color); }
-.slider-group { margin-top: 0.4rem; }
-.slider-group label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
-.modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
-.btn-delete { background: #991b1b; }
-
-.mt-sm { margin-top: 0.5rem; }
-.mb-sm { margin-bottom: 0.5rem; }
-.text-sm { font-size: 0.9rem; }
-.text-gold { color: var(--accent-color); }
-.text-blue { color: #3b82f6; }
-.list-row { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; }
-
-/* OVERRIDE: FORCE MODAL SCROLLING */
-body.modal-open {
-  overflow: hidden !important;
-}
-
-div#playerModal.modal,
-div#loginModal.modal {
-  display: none;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.8);
-  align-items: center;
-  justify-content: center;
-}

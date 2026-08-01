@@ -40,7 +40,7 @@ async function uploadToCloudinary(file) {
     const data = await res.json();
     
     if (data.secure_url) {
-      return data.secure_url; // Returns clean HTTPS link (~80 bytes)
+      return data.secure_url;
     } else {
       throw new Error(data.error?.message || "Upload rejected by Cloudinary");
     }
@@ -147,7 +147,7 @@ let currentEditingPlayer = null;
 let isPhotoRemoved = false;
 let isCardFrameRemoved = false;
 
-// REAL-TIME SPRITE ANIMATION ENGINE TICKER (ADAPTS TO CUSTOM CARD WIDTH)
+// REAL-TIME SPRITE ANIMATION ENGINE TICKER
 let spriteTickerIndex = 0;
 setInterval(() => {
   spriteTickerIndex++;
@@ -373,7 +373,7 @@ window.toggleSpriteMenuDisplay = function() {
   updateModalPreview();
 };
 
-// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS, CUSTOM PIXEL DIMENSIONS & MANUAL OVR
+// LIVE CARD PREVIEW WITH INSTANT LOCAL FILE READERS, CUSTOM PIXEL DIMENSIONS & ELEMENT OFFSETS
 window.updateModalPreview = function() {
   const previewBox = document.getElementById("cardCreatorLivePreview");
   if (!previewBox) return;
@@ -392,6 +392,23 @@ window.updateModalPreview = function() {
   const imgX = parseInt(document.getElementById("editImgX")?.value) || 0;
   const imgY = parseInt(document.getElementById("editImgY")?.value) || 0;
   const imgScale = parseFloat(document.getElementById("editImgScale")?.value) || 1;
+
+  const badgeX = parseInt(document.getElementById("editBadgeX")?.value) || 0;
+  const badgeY = parseInt(document.getElementById("editBadgeY")?.value) || 0;
+  const nameX = parseInt(document.getElementById("editNameX")?.value) || 0;
+  const nameY = parseInt(document.getElementById("editNameY")?.value) || 0;
+  const statsX = parseInt(document.getElementById("editStatsX")?.value) || 0;
+  const statsY = parseInt(document.getElementById("editStatsY")?.value) || 0;
+
+  if (document.getElementById('lblImgX')) document.getElementById('lblImgX').innerText = imgX;
+  if (document.getElementById('lblImgY')) document.getElementById('lblImgY').innerText = imgY;
+  if (document.getElementById('lblImgScale')) document.getElementById('lblImgScale').innerText = imgScale;
+  if (document.getElementById('lblBadgeX')) document.getElementById('lblBadgeX').innerText = badgeX;
+  if (document.getElementById('lblBadgeY')) document.getElementById('lblBadgeY').innerText = badgeY;
+  if (document.getElementById('lblNameX')) document.getElementById('lblNameX').innerText = nameX;
+  if (document.getElementById('lblNameY')) document.getElementById('lblNameY').innerText = nameY;
+  if (document.getElementById('lblStatsX')) document.getElementById('lblStatsX').innerText = statsX;
+  if (document.getElementById('lblStatsY')) document.getElementById('lblStatsY').innerText = statsY;
 
   const isSpriteSheet = document.getElementById("editIsSpriteSheet")?.checked || false;
   const spriteTotalFrames = parseInt(document.getElementById("editSpriteTotalFrames")?.value) || 30;
@@ -438,9 +455,10 @@ window.updateModalPreview = function() {
     statColor,
     cardWidth,
     cardHeight,
-    imgX,
-    imgY,
-    imgScale,
+    imgX, imgY, imgScale,
+    badgeX, badgeY,
+    nameX, nameY,
+    statsX, statsY,
     isSpriteSheet,
     spriteTotalFrames,
     spriteActiveFrames,
@@ -449,7 +467,7 @@ window.updateModalPreview = function() {
     featureBadge
   };
 
-  previewBox.innerHTML = createCardHTML(dummyP, "preview", false, false);
+  previewBox.innerHTML = createCardHTML(dummyP, "preview", false, false, true);
 };
 
 window.openPlayerModal = function(id = null) {
@@ -478,9 +496,18 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editStatColor")) document.getElementById("editStatColor").value = currentEditingPlayer.statColor || currentEditingPlayer.textColor || "#220e02";
       if (document.getElementById("editCardWidth")) document.getElementById("editCardWidth").value = currentEditingPlayer.cardWidth || 200;
       if (document.getElementById("editCardHeight")) document.getElementById("editCardHeight").value = currentEditingPlayer.cardHeight || 300;
+      
       if (document.getElementById("editImgX")) document.getElementById("editImgX").value = currentEditingPlayer.imgX || 0;
       if (document.getElementById("editImgY")) document.getElementById("editImgY").value = currentEditingPlayer.imgY || 0;
       if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = currentEditingPlayer.imgScale || 1;
+
+      if (document.getElementById("editBadgeX")) document.getElementById("editBadgeX").value = currentEditingPlayer.badgeX || 0;
+      if (document.getElementById("editBadgeY")) document.getElementById("editBadgeY").value = currentEditingPlayer.badgeY || 0;
+      if (document.getElementById("editNameX")) document.getElementById("editNameX").value = currentEditingPlayer.nameX || 0;
+      if (document.getElementById("editNameY")) document.getElementById("editNameY").value = currentEditingPlayer.nameY || 0;
+      if (document.getElementById("editStatsX")) document.getElementById("editStatsX").value = currentEditingPlayer.statsX || 0;
+      if (document.getElementById("editStatsY")) document.getElementById("editStatsY").value = currentEditingPlayer.statsY || 0;
+
       if (document.getElementById("editCardImageUrl")) document.getElementById("editCardImageUrl").value = currentEditingPlayer.cardFrameUrl || "";
       
       if (document.getElementById("editIsSpriteSheet")) document.getElementById("editIsSpriteSheet").checked = !!currentEditingPlayer.isSpriteSheet;
@@ -510,9 +537,18 @@ window.openPlayerModal = function(id = null) {
     if (document.getElementById("editStatColor")) document.getElementById("editStatColor").value = "#220e02";
     if (document.getElementById("editCardWidth")) document.getElementById("editCardWidth").value = 200;
     if (document.getElementById("editCardHeight")) document.getElementById("editCardHeight").value = 300;
+    
     if (document.getElementById("editImgX")) document.getElementById("editImgX").value = 0;
     if (document.getElementById("editImgY")) document.getElementById("editImgY").value = 0;
     if (document.getElementById("editImgScale")) document.getElementById("editImgScale").value = 1;
+
+    if (document.getElementById("editBadgeX")) document.getElementById("editBadgeX").value = 0;
+    if (document.getElementById("editBadgeY")) document.getElementById("editBadgeY").value = 0;
+    if (document.getElementById("editNameX")) document.getElementById("editNameX").value = 0;
+    if (document.getElementById("editNameY")) document.getElementById("editNameY").value = 0;
+    if (document.getElementById("editStatsX")) document.getElementById("editStatsX").value = 0;
+    if (document.getElementById("editStatsY")) document.getElementById("editStatsY").value = 0;
+
     if (document.getElementById("editIsSpriteSheet")) document.getElementById("editIsSpriteSheet").checked = false;
   }
 
@@ -521,7 +557,7 @@ window.openPlayerModal = function(id = null) {
   updateModalPreview();
 };
 
-// SAVE PLAYER WITH CLOUDINARY UPLOADS, SPRITE STRIPS & PIXEL CARD RESIZING
+// SAVE PLAYER WITH CLOUDINARY UPLOADS & ELEMENT OFFSETS
 window.handleSavePlayer = async function(e) {
   if (e) e.preventDefault();
 
@@ -545,6 +581,14 @@ window.handleSavePlayer = async function(e) {
   const imgX = Number(document.getElementById("editImgX")?.value) || 0;
   const imgY = Number(document.getElementById("editImgY")?.value) || 0;
   const imgScale = Number(document.getElementById("editImgScale")?.value) || 1;
+
+  const badgeX = Number(document.getElementById("editBadgeX")?.value) || 0;
+  const badgeY = Number(document.getElementById("editBadgeY")?.value) || 0;
+  const nameX = Number(document.getElementById("editNameX")?.value) || 0;
+  const nameY = Number(document.getElementById("editNameY")?.value) || 0;
+  const statsX = Number(document.getElementById("editStatsX")?.value) || 0;
+  const statsY = Number(document.getElementById("editStatsY")?.value) || 0;
+
   const hasShine = document.getElementById("editShineToggle")?.checked || false;
   const featureBadge = document.getElementById("editFeatureBadge")?.value || "";
 
@@ -603,6 +647,12 @@ window.handleSavePlayer = async function(e) {
     imgX: Number(imgX),
     imgY: Number(imgY),
     imgScale: Number(imgScale),
+    badgeX: Number(badgeX),
+    badgeY: Number(badgeY),
+    nameX: Number(nameX),
+    nameY: Number(nameY),
+    statsX: Number(statsX),
+    statsY: Number(statsY),
     isSpriteSheet: Boolean(isSpriteSheet),
     spriteTotalFrames: Number(spriteTotalFrames),
     spriteActiveFrames: Number(spriteActiveFrames),
@@ -669,7 +719,8 @@ window.handleBatchAdd = function() {
       id: newId,
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: '',
-      cardWidth: 200, cardHeight: 300, imgX: 0, imgY: 0, imgScale: 1
+      cardWidth: 200, cardHeight: 300, imgX: 0, imgY: 0, imgScale: 1,
+      badgeX: 0, badgeY: 0, nameX: 0, nameY: 0, statsX: 0, statsY: 0
     };
 
     if (firestore) {
@@ -718,8 +769,8 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH DYNAMIC CARD WIDTH & HEIGHT IN PIXELS)
-function createCardHTML(p, pId, isSel, showEditButton = true) {
+// FIFAROSTERS-STYLE CARD HTML GENERATOR (WITH MOVABLE ELEMENTS)
+function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false) {
   if (!p) return '';
 
   const bgGif = p.cardFrameUrl || appSettings.globalCardDesignImg || DEFAULT_CARD_FRAME;
@@ -736,10 +787,23 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
   const cardWidth = Number(p.cardWidth) || 200;
   const cardHeight = Number(p.cardHeight) || 300;
 
+  // Position Offsets
   const imgX = Number(p.imgX) || 0;
   const imgY = Number(p.imgY) || 0;
   const imgScale = Number(p.imgScale) || 1;
   const imgTransform = `transform: translate(${imgX}px, ${imgY}px) scale(${imgScale}); transform-origin: center center;`;
+
+  const badgeX = Number(p.badgeX) || 0;
+  const badgeY = Number(p.badgeY) || 0;
+  const badgeTransform = `transform: translate(${badgeX}px, ${badgeY}px);`;
+
+  const nameX = Number(p.nameX) || 0;
+  const nameY = Number(p.nameY) || 0;
+  const nameTransform = `transform: translate(${nameX}px, ${nameY}px);`;
+
+  const statsX = Number(p.statsX) || 0;
+  const statsY = Number(p.statsY) || 0;
+  const statsTransform = `transform: translate(${statsX}px, ${statsY}px);`;
 
   const borderStyle = isSel 
     ? 'outline: 3px solid #22c55e; border-radius: 12px; box-shadow: 0 0 15px rgba(34, 197, 94, 0.7); opacity: 1;' 
@@ -753,7 +817,6 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
 
   const renderEditBtn = showEditButton && isAdmin;
 
-  // Dynamically scale element positions if card dimensions change
   const scaleW = cardWidth / 200;
   const scaleH = cardHeight / 300;
 
@@ -761,7 +824,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
     <div class="fifa-card ${isSel ? 'selected' : ''}" onclick="toggleSelect('${pId}')" 
          style="position: relative; width: ${cardWidth}px; height: ${cardHeight}px; display: inline-block; margin: 10px; cursor: pointer; user-select: none; transition: all 0.2s ease; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.5)); ${borderStyle}">
       
-      <!-- LAYER 1: CARD BACKGROUND FRAME (MP4 VIDEO / SPRITE SHEET / GIF / PNG) -->
+      <!-- LAYER 1: CARD BACKGROUND FRAME -->
       ${isBgVideo ? `
         <video autoplay loop muted playsinline preload="auto" 
                style="position: absolute; top:0; left:0; width:100%; height:100%; object-fit: fill; z-index: 1; border-radius: 12px; pointer-events: none;">
@@ -789,30 +852,35 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
       ${photo ? (
         isCutoutVideo ? `
           <video autoplay loop muted playsinline preload="auto" 
-                 style="position: absolute; top: ${38 * scaleH}px; left: ${40 * scaleW}px; width: ${120 * scaleW}px; height: ${120 * scaleH}px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}">
+                 data-element="photo" class="${isPreview ? 'draggable-layer' : ''}"
+                 style="position: absolute; top: ${38 * scaleH}px; left: ${40 * scaleW}px; width: ${120 * scaleW}px; height: ${120 * scaleH}px; object-fit: contain; z-index: 3; pointer-events: ${isPreview ? 'auto' : 'none'}; ${imgTransform}">
             <source src="${photo}">
           </video>
         ` : `
           <img src="${photo}" alt="${name}" 
-               style="position: absolute; top: ${38 * scaleH}px; left: ${40 * scaleW}px; width: ${120 * scaleW}px; height: ${120 * scaleH}px; object-fit: contain; z-index: 3; pointer-events: none; ${imgTransform}"
+               data-element="photo" class="${isPreview ? 'draggable-layer' : ''}"
+               style="position: absolute; top: ${38 * scaleH}px; left: ${40 * scaleW}px; width: ${120 * scaleW}px; height: ${120 * scaleH}px; object-fit: contain; z-index: 3; pointer-events: ${isPreview ? 'auto' : 'none'}; ${imgTransform}"
                onerror="this.style.display='none';">
         `
       ) : ''}
 
       <!-- LAYER 4: OVR RATING, POSITION & BADGE -->
-      <div style="position: absolute; top: ${22 * scaleH}px; left: ${22 * scaleW}px; z-index: 4; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif;">
+      <div data-element="badge" class="${isPreview ? 'draggable-layer' : ''}" 
+           style="position: absolute; top: ${22 * scaleH}px; left: ${22 * scaleW}px; z-index: 4; color: ${textColor}; text-align: center; font-family: 'Arial Black', sans-serif; pointer-events: ${isPreview ? 'auto' : 'none'}; ${badgeTransform}">
         <div style="font-size: ${26 * scaleW}px; font-weight: 900; line-height: 1;">${ovr}</div>
         <div style="font-size: ${11 * scaleW}px; font-weight: 800; font-family: sans-serif; margin-top: 2px;">${pos}</div>
         ${badge ? `<div style="font-size: ${14 * scaleW}px; margin-top: 4px;">${badge}</div>` : ''}
       </div>
 
       <!-- LAYER 5: PLAYER NAME -->
-      <div style="position: absolute; top: ${168 * scaleH}px; left: 10px; right: 10px; text-align: center; z-index: 4; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: ${13 * scaleW}px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+      <div data-element="name" class="${isPreview ? 'draggable-layer' : ''}" 
+           style="position: absolute; top: ${168 * scaleH}px; left: 10px; right: 10px; text-align: center; z-index: 4; color: ${textColor}; font-family: 'Arial Black', sans-serif; font-size: ${13 * scaleW}px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: ${isPreview ? 'auto' : 'none'}; ${nameTransform}">
         ${name}
       </div>
 
       <!-- LAYER 6: VOLLEYBALL STATS GRID -->
-      <div style="position: absolute; top: ${205 * scaleH}px; left: ${28 * scaleW}px; right: ${28 * scaleW}px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${statColor}; font-family: sans-serif; font-size: ${11 * scaleW}px; font-weight: 900;">
+      <div data-element="stats" class="${isPreview ? 'draggable-layer' : ''}" 
+           style="position: absolute; top: ${205 * scaleH}px; left: ${28 * scaleW}px; right: ${28 * scaleW}px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: 2px; color: ${statColor}; font-family: sans-serif; font-size: ${11 * scaleW}px; font-weight: 900; pointer-events: ${isPreview ? 'auto' : 'none'}; ${statsTransform}">
         <div style="text-align: left;">${stats.atk || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">ATK</span></div>
         <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">RCV</span></div>
         <div style="text-align: left;">${stats.blk || 70} <span style="font-size: ${8 * scaleW}px; font-weight: 700; opacity: 0.85;">BLK</span></div>
@@ -829,6 +897,85 @@ function createCardHTML(p, pId, isSel, showEditButton = true) {
 
     </div>
   `;
+}
+
+// INTERACTIVE DRAG & DROP CONTROL ENGINE FOR MODAL PREVIEW
+let activeDrag = null;
+
+function initDragPreviewControls() {
+  const container = document.getElementById("cardCreatorLivePreview");
+  if (!container) return;
+
+  container.addEventListener("pointerdown", (e) => {
+    const dragTarget = e.target.closest("[data-element]");
+    if (!dragTarget) return;
+
+    const elemType = dragTarget.getAttribute("data-element");
+    let inputX, inputY;
+
+    if (elemType === "photo") {
+      inputX = document.getElementById("editImgX");
+      inputY = document.getElementById("editImgY");
+    } else if (elemType === "badge") {
+      inputX = document.getElementById("editBadgeX");
+      inputY = document.getElementById("editBadgeY");
+    } else if (elemType === "name") {
+      inputX = document.getElementById("editNameX");
+      inputY = document.getElementById("editNameY");
+    } else if (elemType === "stats") {
+      inputX = document.getElementById("editStatsX");
+      inputY = document.getElementById("editStatsY");
+    }
+
+    if (!inputX || !inputY) return;
+
+    activeDrag = {
+      elemType,
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: parseInt(inputX.value) || 0,
+      initialY: parseInt(inputY.value) || 0,
+      inputX,
+      inputY,
+      target: dragTarget
+    };
+
+    try { dragTarget.setPointerCapture(e.pointerId); } catch(err){}
+    e.preventDefault();
+  });
+
+  container.addEventListener("pointermove", (e) => {
+    if (!activeDrag) return;
+
+    const deltaX = Math.round(e.clientX - activeDrag.startX);
+    const deltaY = Math.round(e.clientY - activeDrag.startY);
+
+    let newX = activeDrag.initialX + deltaX;
+    let newY = activeDrag.initialY + deltaY;
+
+    const minX = parseInt(activeDrag.inputX.min) || -120;
+    const maxX = parseInt(activeDrag.inputX.max) || 120;
+    const minY = parseInt(activeDrag.inputY.min) || -120;
+    const maxY = parseInt(activeDrag.inputY.max) || 120;
+
+    newX = Math.min(maxX, Math.max(minX, newX));
+    newY = Math.min(maxY, Math.max(minY, newY));
+
+    activeDrag.inputX.value = newX;
+    activeDrag.inputY.value = newY;
+
+    updateModalPreview();
+  });
+
+  const stopDrag = (e) => {
+    if (activeDrag && activeDrag.target) {
+      try { activeDrag.target.releasePointerCapture(e.pointerId); } catch(err){}
+    }
+    activeDrag = null;
+  };
+
+  container.addEventListener("pointerup", stopDrag);
+  container.addEventListener("pointercancel", stopDrag);
 }
 
 function renderRoster() {
@@ -1017,6 +1164,7 @@ document.addEventListener("DOMContentLoaded", () => {
   listenToCloudData();
   applySettings();
   renderDashboard();
+  initDragPreviewControls();
 
   const form = document.getElementById("playerForm");
   if (form) {
