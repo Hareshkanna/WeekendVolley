@@ -958,6 +958,9 @@ function initDragPreviewControls() {
     } else if (elemType === "stats") {
       inputX = document.getElementById("editStatsX");
       inputY = document.getElementById("editStatsY");
+    } else if (elemType === 'jersey') {
+      currentCard.jerseyX = newX;
+      currentCard.jerseyY = newY;
     }
 
     if (!inputX || !inputY) return;
