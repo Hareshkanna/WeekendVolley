@@ -787,6 +787,7 @@ function listenToCloudData() {
 }
 
 // CARD HTML GENERATOR WITH DYNAMIC SKILLS GRID SECTION RENDERING
+// CARD HTML GENERATOR WITH DYNAMIC SKILLS GRID SECTION & JERSEY NUMBER RENDERING
 function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false) {
   if (!p) return '';
 
@@ -796,6 +797,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
   const statColor = p.statColor || textColor;
   const name = String(p.name || 'PLAYER').toUpperCase();
   const pos = String(p.pos || 'OH').substring(0, 3).toUpperCase();
+  const jersey = String(p.jersey || '0');
   const stats = p.stats || { atk: 70, rcv: 70, blk: 70, stm: 70, srv: 70, tmw: 70 };
   const ovr = p.ovr || 70;
   const badge = p.featureBadge || '';
@@ -898,7 +900,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
         ${name}
       </div>
 
-      <!-- LAYER 6: SKILLS GRID SECTION (WITH MANUAL FONT, ROW GAP & OFFSETS) -->
+      <!-- LAYER 6: SKILLS GRID SECTION -->
       <div data-element="stats" class="${isPreview ? 'draggable-layer' : ''}" 
            style="position: absolute; top: ${205 * scaleH}px; left: ${28 * scaleW}px; right: ${28 * scaleW}px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: ${statsRowGap}px; color: ${statColor}; font-family: sans-serif; font-size: ${statsFontSize * scaleW}px; font-weight: 900; pointer-events: ${isPreview ? 'auto' : 'none'}; ${statsTransform}">
         <div style="text-align: center;">${stats.atk || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">ATK</span></div>
@@ -909,10 +911,15 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
         <div style="text-align: center;">${stats.tmw || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">TMW</span></div>
       </div>
 
-      <!-- LAYER 7: EDIT BUTTON (ADMIN ONLY) -->
+      <!-- LAYER 7: JERSEY NUMBER BADGE (BOTTOM CENTER) -->
+      <div style="position: absolute; bottom: ${renderEditBtn ? '34px' : '10px'}; left: 50%; transform: translateX(-50%); z-index: 4; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 2px 12px; text-align: center; pointer-events: none;">
+        <span style="font-size: ${13 * scaleW}px; font-weight: 900; color: #ef4444; font-family: 'Arial Black', sans-serif;">${jersey}</span>
+      </div>
+
+      <!-- LAYER 8: EDIT BUTTON (ADMIN ONLY) -->
       ${renderEditBtn ? `
         <button onclick="event.stopPropagation(); openPlayerModal('${pId}')" class="btn btn-sec btn-sm" 
-                style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 75%; padding: 2px 4px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
+                style="position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); width: 75%; padding: 2px 4px; font-size: 0.65rem; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px; z-index: 10;">Edit Card</button>
       ` : ''}
 
     </div>
