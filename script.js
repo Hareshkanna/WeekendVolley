@@ -788,6 +788,7 @@ function listenToCloudData() {
 
 // CARD HTML GENERATOR WITH DYNAMIC SKILLS GRID SECTION RENDERING
 // CARD HTML GENERATOR WITH DYNAMIC SKILLS GRID SECTION & JERSEY NUMBER RENDERING
+// CARD HTML GENERATOR WITH SEPARATE DRAGGABLE JERSEY LAYER & OVR-MATCHING STYLING
 function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false) {
   if (!p) return '';
 
@@ -823,6 +824,10 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
   const statsX = Number(p.statsX) || 0;
   const statsY = Number(p.statsY) || 0;
   const statsTransform = `transform: translate(${statsX}px, ${statsY}px);`;
+
+  const jerseyX = Number(p.jerseyX) || 0;
+  const jerseyY = Number(p.jerseyY) || 0;
+  const jerseyTransform = `transform: translate(${jerseyX}px, ${jerseyY}px);`;
 
   const statsFontSize = Number(p.statsFontSize) || 11;
   const statsRowGap = Number(p.statsRowGap) !== undefined ? Number(p.statsRowGap) : 2;
@@ -911,9 +916,10 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
         <div style="text-align: center;">${stats.tmw || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">TMW</span></div>
       </div>
 
-      <!-- LAYER 7: JERSEY NUMBER BADGE (BOTTOM CENTER) -->
-      <div style="position: absolute; bottom: ${renderEditBtn ? '34px' : '10px'}; left: 50%; transform: translateX(-50%); z-index: 4; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 2px 12px; text-align: center; pointer-events: none;">
-        <span style="font-size: ${13 * scaleW}px; font-weight: 900; color: #ef4444; font-family: 'Arial Black', sans-serif;">${jersey}</span>
+      <!-- LAYER 7: SEPARATE DRAGGABLE JERSEY NUMBER ELEMENT -->
+      <div data-element="jersey" class="${isPreview ? 'draggable-layer' : ''}" 
+           style="position: absolute; top: ${230 * scaleH}px; left: ${85 * scaleW}px; z-index: 4; background: rgba(0, 0, 0, 0.75); border: 1.5px solid rgba(255, 255, 255, 0.25); border-radius: 8px; width: ${30 * scaleW}px; height: ${26 * scaleH}px; display: flex; align-items: center; justify-content: center; text-align: center; color: ${textColor}; font-family: 'Arial Black', sans-serif; pointer-events: ${isPreview ? 'auto' : 'none'}; ${jerseyTransform}">
+        <span style="font-size: ${14 * scaleW}px; font-weight: 900; line-height: 1;">${jersey}</span>
       </div>
 
       <!-- LAYER 8: EDIT BUTTON (ADMIN ONLY) -->
