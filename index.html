@@ -302,7 +302,7 @@
 
         <!-- CARD ELEMENTS POSITION ADJUSTMENT SLIDERS -->
         <div class="mt-sm" style="margin-top: 12px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
-          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Card Element Offsets (Badge, Name, Stats)</span>
+          <span style="color: #fbbf24; font-weight: bold; font-size: 0.85rem; display: block; margin-bottom: 8px;">Card Element Offsets (Badge, Name, Stats, Jersey)</span>
           
           <!-- BADGE & OVR STACK -->
           <div style="margin-bottom: 10px;">
@@ -335,7 +335,7 @@
           </div>
 
           <!-- STATS GRID -->
-          <div>
+          <div style="margin-bottom: 10px;">
             <span class="input-lbl" style="color: #cbd5e1; font-weight: bold;">Stats Grid Position</span>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
               <div>
@@ -345,6 +345,21 @@
               <div>
                 <label class="input-lbl">Y Offset: <span id="lblStatsY">0</span>px</label>
                 <input type="range" id="editStatsY" min="-120" max="120" value="0" oninput="document.getElementById('lblStatsY').innerText = this.value">
+              </div>
+            </div>
+          </div>
+
+          <!-- JERSEY NUMBER POSITION -->
+          <div>
+            <span class="input-lbl" style="color: #cbd5e1; font-weight: bold;">Jersey Number Position</span>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label class="input-lbl">X Offset: <span id="lblJerseyX">0</span>px</label>
+                <input type="range" id="editJerseyX" min="-120" max="120" value="0" oninput="document.getElementById('lblJerseyX').innerText = this.value">
+              </div>
+              <div>
+                <label class="input-lbl">Y Offset: <span id="lblJerseyY">0</span>px</label>
+                <input type="range" id="editJerseyY" min="-120" max="120" value="0" oninput="document.getElementById('lblJerseyY').innerText = this.value">
               </div>
             </div>
           </div>

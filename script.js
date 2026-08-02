@@ -399,6 +399,8 @@ window.updateModalPreview = function() {
   const nameY = parseInt(document.getElementById("editNameY")?.value) || 0;
   const statsX = parseInt(document.getElementById("editStatsX")?.value) || 0;
   const statsY = parseInt(document.getElementById("editStatsY")?.value) || 0;
+  const jerseyX = parseInt(document.getElementById("editJerseyX")?.value) || 0;
+  const jerseyY = parseInt(document.getElementById("editJerseyY")?.value) || 0;
 
   const statsFontSize = parseInt(document.getElementById("editStatsFontSize")?.value) || 11;
   const statsRowGap = parseInt(document.getElementById("editStatsRowGap")?.value) || 2;
@@ -412,6 +414,8 @@ window.updateModalPreview = function() {
   if (document.getElementById('lblNameY')) document.getElementById('lblNameY').innerText = nameY;
   if (document.getElementById('lblStatsX')) document.getElementById('lblStatsX').innerText = statsX;
   if (document.getElementById('lblStatsY')) document.getElementById('lblStatsY').innerText = statsY;
+  if (document.getElementById('lblJerseyX')) document.getElementById('lblJerseyX').innerText = jerseyX;
+  if (document.getElementById('lblJerseyY')) document.getElementById('lblJerseyY').innerText = jerseyY;
   if (document.getElementById('lblStatsFont')) document.getElementById('lblStatsFont').innerText = statsFontSize;
   if (document.getElementById('lblStatsRowGap')) document.getElementById('lblStatsRowGap').innerText = statsRowGap;
 
@@ -464,6 +468,7 @@ window.updateModalPreview = function() {
     badgeX, badgeY,
     nameX, nameY,
     statsX, statsY,
+    jerseyX, jerseyY,
     statsFontSize,
     statsRowGap,
     isSpriteSheet,
@@ -514,6 +519,8 @@ window.openPlayerModal = function(id = null) {
       if (document.getElementById("editNameY")) document.getElementById("editNameY").value = currentEditingPlayer.nameY || 0;
       if (document.getElementById("editStatsX")) document.getElementById("editStatsX").value = currentEditingPlayer.statsX || 0;
       if (document.getElementById("editStatsY")) document.getElementById("editStatsY").value = currentEditingPlayer.statsY || 0;
+      if (document.getElementById("editJerseyX")) document.getElementById("editJerseyX").value = currentEditingPlayer.jerseyX || 0;
+      if (document.getElementById("editJerseyY")) document.getElementById("editJerseyY").value = currentEditingPlayer.jerseyY || 0;
 
       if (document.getElementById("editStatsFontSize")) document.getElementById("editStatsFontSize").value = currentEditingPlayer.statsFontSize || 11;
       if (document.getElementById("editStatsRowGap")) document.getElementById("editStatsRowGap").value = currentEditingPlayer.statsRowGap || 2;
@@ -558,6 +565,8 @@ window.openPlayerModal = function(id = null) {
     if (document.getElementById("editNameY")) document.getElementById("editNameY").value = 0;
     if (document.getElementById("editStatsX")) document.getElementById("editStatsX").value = 0;
     if (document.getElementById("editStatsY")) document.getElementById("editStatsY").value = 0;
+    if (document.getElementById("editJerseyX")) document.getElementById("editJerseyX").value = 0;
+    if (document.getElementById("editJerseyY")) document.getElementById("editJerseyY").value = 0;
     if (document.getElementById("editStatsFontSize")) document.getElementById("editStatsFontSize").value = 11;
     if (document.getElementById("editStatsRowGap")) document.getElementById("editStatsRowGap").value = 2;
 
@@ -600,6 +609,8 @@ window.handleSavePlayer = async function(e) {
   const nameY = Number(document.getElementById("editNameY")?.value) || 0;
   const statsX = Number(document.getElementById("editStatsX")?.value) || 0;
   const statsY = Number(document.getElementById("editStatsY")?.value) || 0;
+  const jerseyX = Number(document.getElementById("editJerseyX")?.value) || 0;
+  const jerseyY = Number(document.getElementById("editJerseyY")?.value) || 0;
 
   const statsFontSize = Number(document.getElementById("editStatsFontSize")?.value) || 11;
   const statsRowGap = Number(document.getElementById("editStatsRowGap")?.value) || 2;
@@ -668,6 +679,8 @@ window.handleSavePlayer = async function(e) {
     nameY: Number(nameY),
     statsX: Number(statsX),
     statsY: Number(statsY),
+    jerseyX: Number(jerseyX),
+    jerseyY: Number(jerseyY),
     statsFontSize: Number(statsFontSize),
     statsRowGap: Number(statsRowGap),
     isSpriteSheet: Boolean(isSpriteSheet),
@@ -737,7 +750,8 @@ window.handleBatchAdd = function() {
       name, pos: 'OH', jersey: Math.floor(Math.random()*99)+1,
       photoUrl: DEFAULT_AVATAR, stats: defaultStats, ovr: calcOVR(defaultStats), mvps: 0, cardFrameUrl: '',
       cardWidth: 200, cardHeight: 300, imgX: 0, imgY: 0, imgScale: 1,
-      badgeX: 0, badgeY: 0, nameX: 0, nameY: 0, statsX: 0, statsY: 0, statsFontSize: 11, statsRowGap: 2
+      badgeX: 0, badgeY: 0, nameX: 0, nameY: 0, statsX: 0, statsY: 0, jerseyX: 0, jerseyY: 0,
+      statsFontSize: 11, statsRowGap: 2
     };
 
     if (firestore) {
@@ -786,8 +800,6 @@ function listenToCloudData() {
   }, err => console.error("AppData snapshot error:", err));
 }
 
-// CARD HTML GENERATOR WITH DYNAMIC SKILLS GRID SECTION RENDERING
-// CARD HTML GENERATOR WITH DYNAMIC SKILLS GRID SECTION & JERSEY NUMBER RENDERING
 // CARD HTML GENERATOR WITH SEPARATE DRAGGABLE JERSEY LAYER & OVR-MATCHING STYLING
 function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false) {
   if (!p) return '';
