@@ -930,7 +930,7 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
 
       <!-- LAYER 7: SEPARATE DRAGGABLE JERSEY NUMBER ELEMENT -->
       <div data-element="jersey" class="${isPreview ? 'draggable-layer' : ''}" 
-           style="position: absolute; top: ${230 * scaleH}px; left: ${85 * scaleW}px; z-index: 4; background: rgba(0, 0, 0, 0.75); border: 1.5px solid rgba(255, 255, 255, 0.25); border-radius: 8px; width: ${30 * scaleW}px; height: ${26 * scaleH}px; display: flex; align-items: center; justify-content: center; text-align: center; color: ${textColor}; font-family: 'Arial Black', sans-serif; pointer-events: ${isPreview ? 'auto' : 'none'}; ${jerseyTransform}">
+           style="position: absolute; top: ${230 * scaleH}px; left: ${85 * scaleW}px; z-index: 4; background: rgba(0, 0, 0, 0.75); border: 0px solid rgba(255, 255, 255, 0.25); border-radius: 8px; width: ${30 * scaleW}px; height: ${26 * scaleH}px; display: flex; align-items: center; justify-content: center; text-align: center; color: ${textColor}; font-family: 'Arial Black', sans-serif; pointer-events: ${isPreview ? 'auto' : 'none'}; ${jerseyTransform}">
         <span style="font-size: ${14 * scaleW}px; font-weight: 900; line-height: 1;">${jersey}</span>
       </div>
 
