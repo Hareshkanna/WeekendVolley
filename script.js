@@ -901,12 +901,12 @@ function createCardHTML(p, pId, isSel, showEditButton = true, isPreview = false)
       <!-- LAYER 6: SKILLS GRID SECTION (WITH MANUAL FONT, ROW GAP & OFFSETS) -->
       <div data-element="stats" class="${isPreview ? 'draggable-layer' : ''}" 
            style="position: absolute; top: ${205 * scaleH}px; left: ${28 * scaleW}px; right: ${28 * scaleW}px; z-index: 4; display: grid; grid-template-columns: 1fr 1fr; row-gap: ${statsRowGap}px; color: ${statColor}; font-family: sans-serif; font-size: ${statsFontSize * scaleW}px; font-weight: 900; pointer-events: ${isPreview ? 'auto' : 'none'}; ${statsTransform}">
-        <div style="text-align: left;">${stats.atk || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">ATK</span></div>
-        <div style="text-align: right;">${stats.rcv || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">RCV</span></div>
-        <div style="text-align: left;">${stats.blk || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">BLK</span></div>
-        <div style="text-align: right;">${stats.stm || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">STM</span></div>
-        <div style="text-align: left;">${stats.srv || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">SRV</span></div>
-        <div style="text-align: right;">${stats.tmw || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">TMW</span></div>
+        <div style="text-align: center;">${stats.atk || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">ATK</span></div>
+        <div style="text-align: center;">${stats.rcv || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">RCV</span></div>
+        <div style="text-align: center;">${stats.blk || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">BLK</span></div>
+        <div style="text-align: center;">${stats.stm || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">STM</span></div>
+        <div style="text-align: center;">${stats.srv || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">SRV</span></div>
+        <div style="text-align: center;">${stats.tmw || 70} <span style="font-size: ${Math.max(7, statsFontSize - 3) * scaleW}px; font-weight: 700; opacity: 0.85;">TMW</span></div>
       </div>
 
       <!-- LAYER 7: EDIT BUTTON (ADMIN ONLY) -->
