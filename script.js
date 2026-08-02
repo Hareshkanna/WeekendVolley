@@ -958,9 +958,9 @@ function initDragPreviewControls() {
     } else if (elemType === "stats") {
       inputX = document.getElementById("editStatsX");
       inputY = document.getElementById("editStatsY");
-    } else if (elemType === 'jersey') {
-      currentCard.jerseyX = newX;
-      currentCard.jerseyY = newY;
+    } else if (elemType === "jersey") {
+      inputX = document.getElementById("editJerseyX");
+      inputY = document.getElementById("editJerseyY");
     }
 
     if (!inputX || !inputY) return;
